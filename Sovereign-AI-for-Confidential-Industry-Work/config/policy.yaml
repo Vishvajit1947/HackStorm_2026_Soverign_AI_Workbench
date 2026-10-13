@@ -1,0 +1,54 @@
+# Classification-aware policy (§02.5).
+# Labels are inherited: document -> chunk -> any run that touches them.
+# A run's effective label is the MAXIMUM of every label it has read.
+
+labels: [PUBLIC, INTERNAL, CONFIDENTIAL, RESTRICTED]
+default_label: INTERNAL
+
+rules:
+  PUBLIC:
+    on_box_models_only: true      # always true in Kavach; there is no other kind
+    fs_write_outside_workspace: allow_with_approval
+    export: allow
+    tools_denied: []
+
+  INTERNAL:
+    on_box_models_only: true
+    fs_write_outside_workspace: allow_with_approval
+    export: allow
+    tools_denied: []
+
+  CONFIDENTIAL:
+    on_box_models_only: true
+    fs_write_outside_workspace: allow_with_approval
+    export: allow_with_approval
+    tools_denied: []
+
+  RESTRICTED:
+    on_box_models_only: true
+    fs_write_outside_workspace: deny        # hard refusal, visible in the demo
+    export: allow_with_approval
+    tools_denied: []
+    max_tier: 3                             # cannot be routed to an unverified model
+
+# Side-effect classes that always stop for a human, regardless of label.
+always_approve:
+  - DELETE
+  - FINAL_DELIVERABLE
+
+# Roles -> what a user may do. Cut to a single local user under time pressure (§11),
+# but keep the labels themselves - they are what the policy engine reasons over.
+roles:
+  operator:
+    max_label: INTERNAL
+    may_approve: false
+  engineer:
+    max_label: CONFIDENTIAL
+    may_approve: true
+  auditor:
+    max_label: RESTRICTED
+    may_approve: false
+    read_only: true
+  admin:
+    max_label: RESTRICTED
+    may_approve: true
