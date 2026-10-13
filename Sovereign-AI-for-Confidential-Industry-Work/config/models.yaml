@@ -1,0 +1,295 @@
+# Model registry. Adding a model is a YAML entry plus a GGUF in $KAVACH_MODEL_DIR
+# then `POST /api/models/reload` - no code change, no restart. (§03)
+#
+# sha256 is verified against the file on boot when KAVACH_ENFORCE_DIGESTS=1.
+# Leave it as `null` for a model you have not staged yet; the registry will mark
+# it UNVERIFIED and the constraint filter will refuse to route to it.
+# Record digests with: python scripts/stage_model.py --write
+#
+# quality[] is written by the offline eval harness (scripts/eval_harness.py).
+# The placeholder numbers below are seeds - REPLACE THEM with measured values
+# before the submission, or the router panel is telling a story you cannot defend.
+
+- id: qwen3-8b-q4
+  file: qwen2.5-7b-instruct-q4_k_m.gguf
+  sha256: 4e9221217000d0fc8f5ffdbae51a7201fcc3613de18ff1b1cd8c7c01f924437b
+  license: apache-2.0
+  tier: 2
+  capabilities: [text, tools, reasoning]
+  context: 32768
+  vram_gb: 5.4
+  load_ms: 4200
+  tok_per_s: 34
+  quality:
+    agentic_multi: 1.0
+    code_generation: 1.0
+    doc_summary: 1.0
+    kb_qa: 0.65
+    numerical_calc: 0.75
+    official_drafting: 0.88
+    visual_doc: 0.00   # SEEDED - not measured   # SEEDED - not measured
+
+  quality_measured: [agentic_multi, code_generation, doc_summary, kb_qa, numerical_calc, official_drafting]
+- id: qwen2_5-coder-7b-q4
+  file: qwen2.5-coder-7b-instruct-q4_k_m.gguf
+  sha256: 95b66c354d0861a8611e4e14c619dd110f74ee1c979a722bc0cdf8ed96963bb9
+  license: apache-2.0
+  tier: 2
+  capabilities: [text, tools, fim]
+  context: 32768
+  vram_gb: 4.6
+  load_ms: 4200
+  tok_per_s: 38
+  # SEEDS, and still seeds - but not implausible ones. This block read
+  # code_generation 1.0, doc_summary 1.0, agentic_multi 1.0 and
+  # official_drafting 0.88, which claimed a CODER model was exactly as good at
+  # summarising a document as a general instruct model and better than one at
+  # drafting. The router believed it, so every class - agentic_multi,
+  # doc_summary, official_drafting - routed here and the panel showed one model
+  # doing everything, which is what a user noticed and queried.
+  #
+  # A coder is tuned for code at the cost of prose; the numbers below say that,
+  # and leave code_generation where it was. `quality_measured: false` still
+  # applies to every one of them: scripts/eval_harness.py --quality --write
+  # against real weights is what replaces guesses with measurements.
+  quality:
+    agentic_multi: 0.75
+    code_generation: 1.0
+    doc_summary: 0.62
+    kb_qa: 0.30
+    numerical_calc: 0.50
+    official_drafting: 0.55
+    visual_doc: 0.00        # no vision tower -> hard-eliminated by stage 1   # SEEDED - not measured   # SEEDED - not measured
+
+  quality_measured: [agentic_multi, code_generation, doc_summary, kb_qa, numerical_calc, official_drafting]
+- id: qwen3-vl-8b-q4
+  file: Qwen2.5-VL-7B-Instruct-q4_k_m.gguf
+  # The multimodal projector. WITHOUT this a vision model still loads, still
+  # answers, and never looks at the image - so the backend refuses images unless
+  # this file is present rather than describing a P&ID it never saw.
+  mmproj: mmproj-Qwen2.5-VL-7B-Instruct-Q8_0.gguf
+  sha256: e167b60a5e37597c104afabba37cbaeb448f639a963fb64278dd442a54e3b27d
+  license: apache-2.0
+  tier: 2
+  capabilities: [text, vision, tools]
+  context: 8192
+  vram_gb: 4.6
+  n_gpu_layers: 22
+  load_ms: 5100
+  tok_per_s: 24
+  quality:
+    agentic_multi: 1.0
+    code_generation: 1.0
+    doc_summary: 0.9
+    kb_qa: 0.65
+    numerical_calc: 0.75
+    official_drafting: 0.88
+    visual_doc: 0.91   # SEEDED - not measured   # SEEDED - not measured
+
+  quality_measured: [agentic_multi, code_generation, doc_summary, kb_qa, numerical_calc, official_drafting]
+- id: qwen3-14b-q4
+  file: qwen3-14b-instruct-q4_k_m.gguf
+  sha256: null
+  license: apache-2.0
+  tier: 3
+  capabilities: [text, tools, reasoning]
+  context: 32768
+  vram_gb: 9.2
+  load_ms: 7400
+  tok_per_s: 19
+  quality:
+    code_generation: 0.79
+    doc_summary: 0.89
+    numerical_calc: 0.82
+    official_drafting: 0.90
+    kb_qa: 0.87
+    visual_doc: 0.00
+    agentic_multi: 0.86
+
+- id: qwen3-4b-q4
+  file: qwen3-4b-instruct-q4_k_m.gguf
+  sha256: null
+  license: apache-2.0
+  tier: 1
+  capabilities: [text, tools]
+  context: 32768
+  vram_gb: 2.9
+  load_ms: 2400
+  tok_per_s: 52
+  quality:
+    code_generation: 0.54
+    doc_summary: 0.72
+    numerical_calc: 0.61
+    official_drafting: 0.70
+    kb_qa: 0.71
+    visual_doc: 0.00
+    agentic_multi: 0.63
+
+- id: qwen2_5-coder-3b-q4
+  file: qwen2.5-coder-3b-instruct-q4_k_m.gguf
+  sha256: null
+  license: apache-2.0
+  tier: 1
+  capabilities: [text, tools, fim]
+  context: 32768
+  vram_gb: 2.1
+  load_ms: 1900
+  tok_per_s: 58
+  quality:
+    code_generation: 0.74
+    doc_summary: 0.44
+    numerical_calc: 0.58
+    official_drafting: 0.38
+    kb_qa: 0.41
+    visual_doc: 0.00
+    agentic_multi: 0.49
+
+- id: qwen3-vl-4b-q4
+  file: qwen3-vl-4b-instruct-q4_k_m.gguf
+  sha256: null
+  license: apache-2.0
+  tier: 1
+  capabilities: [text, vision]
+  context: 16384
+  vram_gb: 3.4
+  load_ms: 3100
+  tok_per_s: 31
+  quality:
+    code_generation: 0.28
+    doc_summary: 0.58
+    numerical_calc: 0.40
+    official_drafting: 0.44
+    kb_qa: 0.51
+    visual_doc: 0.82
+    agentic_multi: 0.45
+
+- id: qwen3-1_7b-q4
+  file: qwen2.5-1.5b-instruct-q4_k_m.gguf
+  sha256: 6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e
+  license: apache-2.0
+  tier: 0
+  capabilities: [text, tools]
+  context: 8192
+  vram_gb: 1.3
+  load_ms: 1100
+  tok_per_s: 4          # CPU-only in the TINY profile
+  quality:
+    code_generation: 0.36
+    doc_summary: 0.52
+    numerical_calc: 0.38
+    official_drafting: 0.49
+    kb_qa: 0.50
+    visual_doc: 0.00
+    agentic_multi: 0.34
+
+- id: qwen3-vl-2b-q4
+  file: qwen3-vl-2b-instruct-q4_k_m.gguf
+  sha256: null
+  license: apache-2.0
+  tier: 0
+  capabilities: [text, vision]
+  context: 8192
+  vram_gb: 1.9
+  load_ms: 1800
+  tok_per_s: 3
+  quality:
+    visual_doc: 0.68
+    doc_summary: 0.40
+    code_generation: 0.18
+    numerical_calc: 0.26
+    official_drafting: 0.31
+    kb_qa: 0.38
+    agentic_multi: 0.28
+
+# ---- staged on this box: Intel Arc iGPU, shared system memory ----
+#
+# Added for the ARC profile. Unlike the entries above, this one is expected to
+# have a real GGUF behind it - stage the file, then:
+#   python scripts/stage_model.py --write --only qwen2_5-7b-instruct
+#
+# vram_gb is what the WARDEN budgets against, and on a shared-memory iGPU that
+# is system RAM, not a dedicated pool. 5.0 is the Q4_K_M file plus working set;
+# it is a claim from this manifest, not a measured allocation (see R1).
+#
+# tok_per_s is deliberately pessimistic. A 7B at Q4 on an iGPU is single-digit
+# tokens per second, and the router's latency term should reflect that rather
+# than a discrete-GPU number that would make every routing decision wrong.
+- id: qwen2_5-7b-instruct
+  file: qwen2.5-7b-instruct-q4_k_m.gguf
+  sha256: 4e9221217000d0fc8f5ffdbae51a7201fcc3613de18ff1b1cd8c7c01f924437b
+  license: apache-2.0
+  tier: 2
+  capabilities: [text, tools, reasoning]
+  context: 8192
+  # 4.6, not 5.0. The file is qwen2.5-7b-instruct-q4_k_m.gguf at 4.36 GB on
+  # disk - the same quantisation and the same size as qwen2.5-coder-7b, which
+  # declares 4.6 and loads on this card with room to spare. The 5.0 here was a
+  # guess, and it was the reason this model could not be listed in a profile
+  # budgeted for a 6 GB card: every prose task then went to the coder.
+  vram_gb: 4.6
+  # Both of these were guesses that made this model look slower than it is, and
+  # the router's latency term is where that showed: at 6 tok/s it lost
+  # doc_summary to the coder on SPEED despite a better quality score. Two files
+  # of the same architecture family, the same q4_k_m quantisation and the same
+  # 4.36 GB cannot differ six-fold in throughput; seeded at the coder's figure
+  # until scripts/eval_harness.py measures both on this card.
+  load_ms: 4200
+  tok_per_s: 38
+  quality:
+    code_generation: 0.72
+    doc_summary: 0.80
+    numerical_calc: 0.71
+    official_drafting: 0.80
+    kb_qa: 0.79
+    visual_doc: 0.00        # no vision tower -> hard-eliminated by stage 1
+    agentic_multi: 0.74
+
+# ---- embedders + reranker: pinned, never swapped out ----
+
+- id: bge-m3-emb
+  file: bge-m3-q8_0.gguf
+  sha256: 777b9a12bd606063d0af16decb6857681871a7ec4a8126fab6cec7ed4fc426a8
+  license: mit
+  tier: 0
+  role: embedding
+  capabilities: [embedding]
+  context: 8192
+  vram_gb: 1.2
+  load_ms: 900
+  dim: 1024
+
+- id: qwen3-emb-0_6b
+  file: qwen3-embedding-0.6b-q8_0.gguf
+  sha256: null
+  license: apache-2.0
+  tier: 0
+  role: embedding
+  capabilities: [embedding]
+  context: 8192
+  vram_gb: 0.7
+  load_ms: 600
+  dim: 1024
+
+- id: minilm-l6-emb
+  file: all-minilm-l6-v2-q8_0.gguf
+  sha256: e5ec722e8c82dc4ffaf965175ca472f5da3f97b695590b5b0780bdbfa29bcaf3
+  license: apache-2.0
+  tier: 0
+  role: embedding
+  capabilities: [embedding]
+  context: 512
+  vram_gb: 0.1
+  load_ms: 200
+  dim: 384
+
+- id: bge-reranker-v2-m3
+  file: bge-reranker-v2-m3-q8_0.gguf
+  sha256: null
+  license: apache-2.0
+  tier: 0
+  role: reranker
+  capabilities: [reranking]
+  context: 8192
+  vram_gb: 1.1
+  load_ms: 800
+
