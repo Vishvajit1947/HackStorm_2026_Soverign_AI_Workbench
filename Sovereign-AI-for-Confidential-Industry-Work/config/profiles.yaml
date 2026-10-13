@@ -1,0 +1,166 @@
+# Hardware profiles. The code path does not change between these - only which
+# model ids are pinned/available and how much VRAM the warden believes it has.
+# Selected by KAVACH_PROFILE. Rehearse LOW and TINY at least once (§11).
+
+TINY:
+  description: "CPU-only fallback. Unpleasant but alive."
+  vram_gb: 0.0
+  reserve_gb: 0.0
+  cpu_only: true
+  # On CPU the weights live in system RAM, so the warden budgets against this
+  # instead of vram_gb. Without it the budget is 0.0 and NOTHING can be pinned -
+  # which would break the one profile whose entire job is still working when the
+  # GPU does not. Sized for a modest 16 GB laptop with room for the OS.
+  ram_gb: 8.0
+  context: 4096
+  pinned: [minilm-l6-emb]
+  available: [qwen3-1_7b-q4, qwen3-vl-2b-q4, minilm-l6-emb]
+
+LOW:
+  description: "RTX 4060 class, 8 GB."
+  vram_gb: 8.0
+  reserve_gb: 2.0          # fragmentation + display output
+  cpu_only: false
+  context: 8192
+  pinned: [qwen3-emb-0_6b]
+  available: [qwen3-4b-q4, qwen2_5-coder-3b-q4, qwen3-vl-4b-q4, qwen3-emb-0_6b]
+
+MID:
+  description: "RTX 3060 class, 12 GB. The reference profile."
+  vram_gb: 12.0
+  reserve_gb: 2.0
+  cpu_only: false
+  context: 16384
+  # Pinned embedder is minilm-l6-emb, not bge-m3-emb as designed. The staged
+  # bge-m3-q8_0.gguf is tagged architecture 'xlmr' in its GGUF metadata, which
+  # mainline llama.cpp (tested up to b10809) does not implement - every build,
+  # including a same-day official release, refuses it with "unknown model
+  # architecture: 'xlmr'". This is a property of that specific file's
+  # conversion, not a build-age problem. Swap back once a bge-m3 GGUF built
+  # with a supported architecture tag (commonly 'bert') is staged.
+  pinned: [minilm-l6-emb]
+  available: [qwen3-8b-q4, qwen2_5-coder-7b-q4, qwen3-vl-8b-q4, minilm-l6-emb]
+
+HIGH:
+  description: "RTX 4080 class, 16 GB. Two swap slots so vision never evicts text."
+  vram_gb: 16.0
+  # 1.6 not 2.2: the warden charges the KV cache (~0.5 GB at 32K) separately, so a
+  # 2.2 GB reserve double-counts and squeezes the second swap slot back out - which
+  # silently defeats the whole point of this profile. Budget works out at 13.9 GB:
+  #   emb 1.2 + text 5.4 + vision 6.1 = 12.7 resident, ~1.2 GB genuinely spare.
+  reserve_gb: 1.6
+  cpu_only: false
+  context: 32768
+  swap_slots: 2
+  # The reranker is NOT pinned - it is a swap-pool member loaded for the rerank
+  # step. Pinning it costs 1.1 GB permanently and pushes vision back into evicting
+  # the text model.
+  pinned: [bge-m3-emb]
+  available:
+    - qwen3-14b-q4
+    - qwen2_5-coder-7b-q4
+    - qwen3-vl-8b-q4
+    - bge-m3-emb
+    - bge-reranker-v2-m3
+
+ARC:
+  description: "Intel Arc iGPU or CPU. Shared system memory, no dedicated VRAM."
+  # cpu_only, and NOT because there is no GPU. An Intel Arc iGPU has no dedicated
+  # VRAM pool at all - it carves its allocation out of the same 16 GB the OS is
+  # using. Budgeting against a `vram_gb` figure would be budgeting against a
+  # number that does not exist, so this profile budgets against ram_gb for the
+  # same reason TINY does, and the warden charges no separate KV cache.
+  vram_gb: 0.0
+  cpu_only: true
+  # 15.4 GB installed. 9.0 for models leaves ~6 GB for Windows, the browser and
+  # the gateway - which is tight rather than generous, and the reserve below is
+  # what stops a second admission from pushing the machine into swap.
+  ram_gb: 9.0
+  reserve_gb: 1.0
+  context: 8192
+  swap_slots: 1
+  pinned: [bge-m3-emb]
+  available: [qwen2_5-7b-instruct, bge-m3-emb]
+
+FAST:
+  description: "Small models on the GPU. Responsiveness over capability."
+  # The problem statement sanctions a smaller model when 120B-class hardware is
+  # not at the venue, and on a 6 GB laptop card the 7B is the whole latency
+  # budget: ~9 s to load and ~15 tok/s to generate, so a four-step run spends
+  # two to four minutes mostly waiting. The 1.5B loads in about a second and
+  # stays resident, which is the difference between a demo you can talk over
+  # and one you apologise for.
+  #
+  # Switching is `KAVACH_PROFILE=FAST` - no code change, no redesign, which is
+  # the same property that lets a better model be dropped in later.
+  vram_gb: 6.0              # the real card here, not the 12 GB MID assumes
+  reserve_gb: 1.0
+  cpu_only: false
+  context: 8192
+  # Both models fit at once (1.3 + 0.1 GB), so nothing is ever evicted and no
+  # request pays a swap. That, not raw tok/s, is most of the speed-up.
+  swap_slots: 1
+  pinned: [minilm-l6-emb]
+  available: [qwen3-1_7b-q4, minilm-l6-emb]
+
+# Renamed from DEMO. "profile DEMO" in the topbar reads as "this is demo data",
+# which is the one claim this product must never make by accident: every number
+# on the page is measured on this machine and every model in the list below is a
+# real weight file with a verified digest. The name now says what it is - the
+# profile for a mid-range laptop GPU.
+#
+# Distinct from MID above, which is written for a 12 GB card. This one is sized
+# for the 6 GB RTX 3050 actually in this box.
+MIDRANGE:
+  description: "A mid-range laptop GPU (6 GB): a small model for typed work, a coder for programs, real weights throughout."
+  # Why this exists rather than FAST: FAST lists only the 1.7B and the embedder,
+  # so every program it writes comes from a model scoring 0.36 on code
+  # generation. This one adds the coder and swaps it in when the task needs it,
+  # which is what the second slot below is for. Reading a scan is not lost
+  # either way - tesseract does OCR with no VRAM at all.
+  #
+  # MEASURED, not assumed. This said 12.0 with the comment "the real card on
+  # this machine" and the real card is an RTX 3050 6GB Laptop GPU - 6144 MiB.
+  # The warden believed it, admitted the 6.1 GB vision model onto a card with
+  # 0.2 GB free, and the run sat at "running" with no output until the
+  # 600-second request timeout. Check with:  nvidia-smi --query-gpu=memory.total
+  # --format=csv   The warden now clamps to the card and says so, but the
+  # number here should still be right: the clamp is a safety net, not a config.
+  vram_gb: 6.0
+  reserve_gb: 1.0
+  cpu_only: false
+  context: 8192
+  # Two swap slots: the 1.7B stays put while a second model comes and goes.
+  swap_slots: 2
+  pinned: [minilm-l6-emb]
+  # Only models whose file is actually staged here AND that fit on the card. A
+  # profile listing weights that are not on the box produces "no viable
+  # candidate" at the worst moment; one listing weights that do not FIT is
+  # worse, because it produces a stall instead of a refusal.
+  #
+  # qwen3-vl-8b-q4 is deliberately absent: 6.1 GB declared, plus an image
+  # encoder whose memory is not in that figure, on a 6 GB card. Text
+  # recognition is not lost with it - tesseract is installed and the ingest
+  # fork prefers OCR anyway (it reads a P&ID in seconds with no VRAM, where the
+  # VL model took 644 s and killed llama-server). To restore the VLM path,
+  # stage qwen3-vl-2b-q4 and add it here.
+  #
+  # qwen2_5-coder-7b-q4 IS here, and it is the reason a code task stops
+  # producing broken programs: the 1.7B scores 0.36 on code_generation against
+  # its 1.0, and it showed - asked for a C program the small model produced an
+  # unterminated comment, a call to a non-function and a printf with no
+  # <stdio.h>, three replans running. 4.6 GB fits the 4.9 GB budget with the
+  # embedder pinned, and the warden swaps it out again afterwards, which is
+  # what the second slot is for. Typed chat still routes to the 1.7B, so the
+  # latency a judge feels while talking to the box is unchanged.
+  # THREE text models, so the router has a real choice to make. A user watching
+  # the panel asked why it was always qwen2_5-coder-7b-q4, and the answer was
+  # that it was the only 7B in the list: a coder was drafting documents because
+  # nothing else could be picked. qwen2_5-7b-instruct is the same quantisation
+  # and the same 4.36 GB file, so it fits the same budget, and it wins the prose
+  # classes on the seeded table while the coder keeps code_generation.
+  #
+  # They do not fit together, which is the point of the swap slots: the warden
+  # loads the one the task needs and evicts the other. A prose step after a code
+  # step pays one load; the alternative is a coder writing the report.
+  available: [qwen3-1_7b-q4, qwen2_5-coder-7b-q4, qwen2_5-7b-instruct, qwen3-vl-8b-q4, minilm-l6-emb]
