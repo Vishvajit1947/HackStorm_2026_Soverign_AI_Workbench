@@ -1,0 +1,72 @@
+name: code.exec
+description: >
+  Run a code snippet in an offline sandbox and return its stdout. Python, C,
+  C++, Java, JavaScript (Node) and shell are compiled or interpreted with their
+  own toolchain - the snippet is written to a file with the right extension, so
+  C is compiled with gcc and Java with javac rather than being handed to the
+  Python interpreter. Say which language in `language`; if you do not, it is
+  taken from the mounted file's extension or read off the source, and the answer
+  is reported back with the result. The sandbox has no network interface at all,
+  a read-only root filesystem, and is destroyed after the call - including every
+  file the snippet writes. Nothing written inside the sandbox ever reaches the
+  workspace, so a step that saves a file from here can never pass an acceptance
+  test that looks for that file. To keep a result: print it, then write it to
+  the workspace with fs.write in a later step. To keep the PROGRAM ITSELF, pass
+  save_as - the source is written into the workspace under that name, with the
+  right extension, before it runs.
+side_effect: EXECUTE
+requires_approval: false
+max_runtime_s: 30
+returns: stdout, stderr, the exit code, the language it was run as, and the saved source path
+
+schema:
+  type: object
+  properties:
+    code:
+      type: string
+      description: >
+        Source to execute, in the language named below. Print results to stdout;
+        nothing is returned implicitly and files written here are discarded.
+        LEAVE IT EMPTY to run a program you already wrote: name that file in
+        `files` and it is compiled and run as-is. Never put a shell command
+        here ("gcc -o x x.c") - the sandbox compiles for you.
+    language:
+      type: string
+      description: >
+        python, c, cpp, java, javascript, shell, go, rust or ruby. Optional -
+        omit it and the language is detected from the source - but name it when
+        the task asks for a specific one. A language the sandbox image has no
+        toolchain for is refused with the reason, never run as something else.
+    save_as:
+      type: string
+      description: >
+        Keep the program: the source is written into the workspace under this
+        name before it runs, so it is a real file somebody can open, download
+        and re-run - a run asked for "orifice.py" that leaves behind only a
+        .docx has not delivered what was asked. The extension is corrected to
+        the language that actually runs, so name it plainly: orifice.py,
+        pressure_drop.c, HeatBalance.java. Files the PROGRAM writes are still
+        discarded; this is the source, saved on the host before the container
+        starts.
+    files:
+      type: array
+      items: { type: string }
+      description: >
+        Workspace-relative files to mount read-only at /sandbox/input/. Use
+        these rather than absolute paths - the sandbox cannot see the host
+        filesystem. Mounting exactly one source file also tells the sandbox
+        what language to use - and with `code` left empty, THAT FILE is the
+        program that runs: write it with fs.write, then run it from here.
+  # `code` is no longer required: a step that names one source file in `files`
+  # and leaves `code` empty is running that file, which is the shape the
+  # planner is told to produce. A call with neither is refused at run time with
+  # a message naming both ways.
+  required: []
+
+sandbox:
+  network: none          # no interface whatsoever - not a firewall rule, no NIC
+  rootfs: read-only
+  writable: [/work]      # tmpfs, wiped after the call
+  mem_gb: 2
+  cpus: 1.5
+  pids_limit: 128

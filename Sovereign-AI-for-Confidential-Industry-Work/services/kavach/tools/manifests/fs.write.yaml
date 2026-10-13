@@ -1,0 +1,27 @@
+name: fs.write
+description: Write a text file into the run workspace.
+side_effect: WRITE
+requires_approval: false      # the POLICY engine decides; see below
+max_runtime_s: 10
+returns: the path written and its size
+
+# requires_approval is false here and that is deliberate. Writing inside the
+# workspace is ordinary work and gating it would make every run stop for a human.
+# Writing OUTSIDE the workspace is what needs approval - and that decision is not
+# the manifest's to make, because it depends on the run's data classification.
+# The executor asks the policy engine, which refuses outright at RESTRICTED and
+# asks for approval at CONFIDENTIAL (§02.5).
+
+schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: Workspace-relative path to write.
+    content:
+      type: string
+      description: UTF-8 text to write.
+    append:
+      type: boolean
+      description: Append instead of overwriting (default false).
+  required: [path, content]

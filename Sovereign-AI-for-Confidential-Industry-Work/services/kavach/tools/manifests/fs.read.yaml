@@ -1,0 +1,19 @@
+name: fs.read
+description: Read a UTF-8 text file from the run workspace.
+side_effect: READ
+requires_approval: false
+max_runtime_s: 10
+returns: the file's text content, truncated if very large
+
+schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: >
+        Workspace-relative path. Absolute paths and anything resolving outside
+        the workspace are refused.
+    max_bytes:
+      type: integer
+      description: Read at most this many bytes (default 200000).
+  required: [path]

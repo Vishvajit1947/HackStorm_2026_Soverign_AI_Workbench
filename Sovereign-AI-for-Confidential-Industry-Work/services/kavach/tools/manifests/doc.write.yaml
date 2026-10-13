@@ -1,0 +1,62 @@
+name: doc.write
+description: >
+  Write a real deliverable - Word (.docx), Excel (.xlsx) or PowerPoint (.pptx) -
+  into the run workspace. The format is chosen by the file extension, so name the
+  file approval_note.docx, npsh_calculation.xlsx or hot_work_briefing.pptx. Use
+  this, not fs.write, whenever the deliverable is a document somebody will open,
+  sign or circulate. body is plain text and may use this markup, all optional:
+  "# Heading" and "## Sub-heading" (a short line ending in ":" is also a
+  heading); "- item" for bullets; "1. step" for numbered steps; "Label: value"
+  for a labelled field; "| a | b |" rows for a table; "$$ dP = f*(L/D)*rho*v^2/2
+  $$" or a bare "x = 2*3.5" line for a formula, which is typeset and evaluated
+  where it can be; "> WARNING: ..." for a callout. body may instead be JSON - a
+  list of objects becomes a table with the keys as column headings. For .xlsx
+  give one row per line with comma-separated cells, or a JSON list of objects;
+  the first row is the header, and a cell starting with "=" is written as a live
+  Excel formula.
+side_effect: WRITE
+requires_approval: false      # the POLICY engine decides, exactly as for fs.write
+max_runtime_s: 20
+returns: the path written, its size, the format-specific count, and any rendering warnings
+
+# Same reasoning as fs.write: writing inside the workspace is ordinary work, and
+# writing outside it is the policy engine's decision rather than the manifest's,
+# because it depends on the run's data classification.
+#
+# The schema is three flat strings on purpose. Nested arguments are where small
+# models start failing on tool calls, and this box has to stay drivable by a
+# 1.5B - so the document structure lives in `body` as line-oriented markup
+# rather than as an object the model would have to build correctly. The markup
+# is all optional: a plain paragraph body renders exactly as it always did.
+#
+# The description is long because a tool a model was never told about is a tool
+# it does not call. Every convention listed above is one a small model was
+# observed to reach for unprompted - headings, numbered steps and bare "x = ..."
+# equations especially - and each one used to land in the document as an
+# undifferentiated line of prose.
+
+schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: >
+        Workspace-relative path ending in .docx, .xlsx or .pptx. The extension
+        chooses the format. Name it after the deliverable, in lower case with
+        underscores - approval_note.docx, wall_thickness_survey.xlsx - so the
+        file is recognisable in a folder a month from now.
+    body:
+      type: string
+      description: >
+        The content. Plain text works; the markup in the tool description adds
+        headings, bullets, numbered steps, fields, tables, formulas and
+        callouts. JSON is also accepted - a list of objects becomes a table.
+        .xlsx - one row per line, cells comma-separated, first row is the
+        header, numbers stored as numbers and "=" cells kept as live formulas.
+        .pptx - a heading or a blank-line-separated block starts a new slide.
+    title:
+      type: string
+      description: >
+        Document title. Becomes the Word title, the Excel sheet name and print
+        header, or the opening slide. Write it as a person would head the page.
+  required: [path, body]

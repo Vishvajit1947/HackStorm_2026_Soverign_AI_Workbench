@@ -1,0 +1,25 @@
+name: engineering.analyze
+description: >
+  Inspect an engineering drawing, P&ID or technical blueprint. Extracts dimensions,
+  tolerances (±, limits, fits), geometric entities (holes, lines, slots, hatching),
+  calibrates scale, and checks ASME Y14.5 and ISO 129-1 compliance rules.
+side_effect: READ
+requires_approval: false
+max_runtime_s: 45
+returns: full engineering inspection report with dimensions, tolerance stack, and rules checks
+
+schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: Relative workspace path to the engineering drawing image (PNG, JPG, TIFF).
+    standard:
+      type: string
+      description: >
+        Engineering drawing standard to validate against. Options include ASME Y14.5 or ISO 129-1.
+      default: "ASME Y14.5"
+    scale_mm_per_px:
+      type: number
+      description: Optional known scale factor in mm per pixel. If omitted, auto-calibration is attempted.
+  required: [path]

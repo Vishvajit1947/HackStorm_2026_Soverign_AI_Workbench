@@ -1,0 +1,14 @@
+name: fs.list
+description: List files in the run workspace.
+side_effect: READ
+requires_approval: false
+max_runtime_s: 10
+returns: relative paths with sizes
+
+schema:
+  type: object
+  properties:
+    subdir:
+      type: string
+      description: Workspace-relative directory to list. Defaults to the workspace root.
+  required: []

@@ -1,0 +1,29 @@
+name: calc
+description: >
+  Evaluate an engineering expression symbolically and return the working, not
+  just the number. Supports units, symbolic substitution and step-by-step
+  simplification.
+side_effect: COMPUTE
+requires_approval: false
+max_runtime_s: 10
+returns: the result plus the derivation steps that produced it
+
+# Satisfies the problem statement's "calculations with steps shown" (§06).
+# Asking a 7B model to do arithmetic in its head is the wrong tool for the job -
+# this hands the numbers to SymPy and shows the workings.
+
+schema:
+  type: object
+  properties:
+    expression:
+      type: string
+      description: >
+        The expression to evaluate, e.g. "rho * v * d / mu" or "180 * 0.02 / 0.1524".
+    substitutions:
+      type: string
+      description: >
+        Optional comma-separated assignments, e.g. "rho=998, v=1.2, d=0.1524, mu=0.001".
+    solve_for:
+      type: string
+      description: Optional symbol to solve for, treating the expression as = 0.
+  required: [expression]

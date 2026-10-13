@@ -1,0 +1,22 @@
+name: kb.search
+description: >
+  Search the ingested plant document set and return matching passages, each with
+  the exact citation to reproduce. Results are filtered by the caller's clearance
+  and report anything withheld.
+side_effect: READ
+requires_approval: false
+max_runtime_s: 20
+returns: >
+  passages with citations, the coverage of the corpus they came from, and a count
+  of anything the caller was not cleared to see
+
+schema:
+  type: object
+  properties:
+    query:
+      type: string
+      description: What to look for, in the words the user would use.
+    top_k:
+      type: integer
+      description: How many passages to return (default 6, capped at 20).
+  required: [query]
