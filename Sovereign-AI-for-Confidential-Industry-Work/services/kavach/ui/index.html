@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<!--
+  Kavach workbench UI (L6, §09).
+
+  Hand-written HTML/CSS/JS with no build step and no dependencies. Not because a
+  framework would be wrong, but because of what this product claims: an
+  air-gapped box with no CDN, no web font and no hostname resolution. A Vite
+  bundle is a node_modules tree to stage offline, a lockfile to audit and a build
+  to reproduce on a venue machine that may have nothing installed. Four files a
+  judge can open in Notepad are a stronger answer to "prove it does not phone
+  home" than any amount of tooling - and `scripts/offline_check.py` turns that
+  from a claim into a check that fails the build.
+
+  EVERY asset here is same-origin and relative. Nothing is fetched from a host.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Belt and braces on top of the air gap: even if something external were
+       referenced by accident, the browser refuses to load it. -->
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'">
+  <title>Kavach Sovereign Workbench</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="app.css">
+  <script src="theme.js"></script>
+</head>
+<body>
+
+<div class="shell">
+
+  <div class="brandbox">
+    <div class="brand-mark">K</div>
+    <div>
+      <div class="brand-name">Kavach</div>
+      <div class="brand-sub">SOVEREIGN WORKBENCH</div>
+    </div>
+  </div>
+
+  <header class="topbar">
+    <!-- The sidebar closes. On a 1366x768 projector the nav is 220px of the
+         screen that never changes, and the panel being demonstrated is the
+         part that needs the room. -->
+    <button class="iconbtn" id="nav-toggle" title="show or hide the menu"
+            aria-label="show or hide the menu" aria-expanded="true">
+      <span class="burger"></span>
+    </button>
+
+    <!-- Who is using the box. The policy engine already decides what each role
+         may read and do; this is where a person says which one they are, and
+         the page says plainly what that means for them. -->
+    <label class="rolepick" for="role">
+      <span>You are</span>
+      <select id="role">
+        <option value="engineer">an engineer</option>
+        <option value="operator">an operator</option>
+        <option value="admin">an administrator</option>
+        <option value="auditor">an auditor</option>
+      </select>
+    </label>
+    <span class="chip role-note" id="role-note">-</span>
+
+    <span class="spacer"></span>
+    <span class="chip" id="chip-profile">profile <b>...</b></span>
+    <span class="chip" id="chip-backend">backend <b>...</b></span>
+    <span class="chip" id="chip-vram">vram <b>...</b></span>
+    <span class="chip" id="chip-uptime">uptime <b>...</b></span>
+    <!-- The honesty count lives in the topbar rather than a band across the
+         page: still present on every view, one click from the detail, and not
+         600px of amber that stops being read after ninety seconds. -->
+    <button class="chip" id="theme-toggle" title="switch between dark and light">
+      <span id="theme-icon">light mode</span></button>
+    <button class="chip honesty-chip hide" id="honesty-chip"
+            title="what this box cannot currently prove">
+      <span class="dot warn"></span>cannot prove <b id="honesty-count">0</b></button>
+    <span class="chip"><span class="dot" id="conn-dot"></span>
+      <b id="conn-label">connecting</b></span>
+  </header>
+
+  <!-- Plain names. "Agentic run", "Knowledge plane" and "Fabric & router" are
+       what the architecture calls these; they are not what a refinery engineer
+       looking for the button calls them. The layer tags (L5, L3, L0) moved out
+       of the menu and onto each page's own header, where someone who wants
+       them can find them and nobody else has to read them. -->
+  <!-- The two group headings are the problem statement's own two halves, not
+       generic furniture. PS 26117 asks for confidential work to be done ON the
+       plant's own hardware, and for the operator to be able to SEE that none of
+       it left - "Work" and "Proof" named the shape of the menu; these name the
+       thing being demonstrated. The footer carries the statement itself, which
+       is the closest an air-gapped page gets to linking to it. -->
+  <nav class="nav" id="nav">
+    <div class="nav-label">Confidential work, on this plant</div>
+    <button class="nav-item active" data-view="overview">Home</button>
+    <button class="nav-item" data-view="runs">Do a task</button>
+    <button class="nav-item" data-view="corpus">My documents</button>
+    <button class="nav-item" data-view="engineering">Engineering drawings</button>
+    <div class="nav-label">Proof it stayed here</div>
+    <button class="nav-item" data-view="sovereignty">Offline proof</button>
+    <button class="nav-item" data-view="router">Models on this GPU</button>
+
+    <div class="nav-ps">
+      <b>SIH PS 26117 &middot; MRPL</b>
+      Sovereign AI for confidential industry work. One mid-range GPU, no
+      connection to anything, and the evidence to show for it.
+    </div>
+  </nav>
+
+  <main class="main" id="main">
+
+    <!-- Anything the box cannot presently prove is hoisted here, above every
+         view. A caveat that lives only inside the panel it applies to is a
+         caveat nobody reads while looking at a different panel. -->
+    <!-- Detail for the topbar chip. A <dialog> is the browser's own modal:
+         focus trapping, Escape to close and the backdrop come for free, and
+         nothing is fetched to provide them. -->
+    <dialog class="modal" id="honesty-modal">
+      <div class="honesty-head">
+        <span>WHAT THIS COMPUTER CANNOT PROVE RIGHT NOW</span>
+        <button class="tiny ghost" id="honesty-close">close</button>
+      </div>
+      <ul id="honesty-list"></ul>
+      <p class="tiny muted" style="margin:10px 0 0">
+        These are not errors. Each one is something the system will not claim, because it cannot show you proof on this machine.
+      </p>
+    </dialog>
+
+    <!-- Transient failures land here and fade. Not the same thing as the list
+         above: a request that failed is news, a limitation is a standing fact. -->
+    <div class="toasts" id="toasts"></div>
+
+    <!-- ================================================== OVERVIEW ==== -->
+    <section class="view" id="view-overview">
+      <h2 class="view-title">Home</h2>
+      <p class="view-lede">
+        What this computer can prove right now, and what it cannot. Every number below is read fresh this second - nothing here is saved from earlier.
+      </p>
+
+      <div class="row c4">
+        <div class="card">
+          <div class="stat">
+            <div class="stat-value good" id="kpi-egress">-</div>
+            <div class="stat-label">packets sent by this whole PC, all apps</div>
+            <div class="stat-note" id="kpi-egress-note">since baseline</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="stat">
+            <div class="stat-value" id="kpi-audit">-</div>
+            <div class="stat-label">entries in the tamper-proof record</div>
+            <div class="stat-note" id="kpi-audit-note">-</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="stat">
+            <div class="stat-value" id="kpi-models">-</div>
+            <div class="stat-label">AI models set up</div>
+            <div class="stat-note" id="kpi-models-note">-</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="stat">
+            <div class="stat-value" id="kpi-gaps">-</div>
+            <div class="stat-label">pages nothing could read</div>
+            <div class="stat-note" id="kpi-gaps-note">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row split">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Your documents</span>
+            <span class="spacer"></span>
+            <span class="card-sub" id="ov-corpus-sub">-</span>
+          </div>
+          <div id="ov-coverage"></div>
+          <h3 class="sec">Documents</h3>
+          <div class="scroll short"><table class="grid">
+            <thead><tr><th>document</th><th>class</th><th class="num">pages read</th></tr></thead>
+            <tbody id="ov-docs"></tbody>
+          </table></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Graphics memory</span>
+            <span class="spacer"></span>
+            <span class="card-sub" id="ov-vram-sub">-</span>
+          </div>
+          <div class="center" id="ov-vram-donut"></div>
+          <!-- WHY that number, on the card that shows it. "of 4.8 usable" on a
+               machine whose owner believes it has 9 GB reads as the workbench
+               losing memory, and the only way to find out was to ask. The
+               budget is an arithmetic fact about THIS card and it can be
+               printed in one line. -->
+          <p class="tiny muted center" id="ov-vram-why" style="margin:10px 0 0"></p>
+          <h3 class="sec">Resident</h3>
+          <ul class="plain" id="ov-resident"></ul>
+        </div>
+      </div>
+
+      <!-- WHAT KAVACH CAN DO, BEFORE ANYONE ASKS IT TO.
+           Until this existed the only way to learn that code execution was
+           unavailable was to ask for it and watch a task fail four minutes
+           later. Every unavailable line carries what to do about it.
+
+           "on this PC" is not filler and must not be trimmed: each line is a
+           Kavach feature GATED ON THIS MACHINE - reading a scan needs tesseract
+           or vision weights, running code needs Docker. A bare "What Kavach can
+           do" would read as the product's feature list, and a greyed-out line
+           would then look like a missing feature rather than a missing
+           dependency with a named fix. -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">What Kavach can do on this PC</span>
+          <span class="spacer"></span>
+          <span class="card-sub" id="cap-sub">-</span>
+        </div>
+        <div id="capabilities"></div>
+      </div>
+
+      <div class="row split-r">
+        <div class="card">
+          <div class="card-head"><span class="card-title">Attempts to send data out</span></div>
+          <div id="ov-spark"></div>
+          <p class="tiny muted" style="margin:8px 0 0">
+            What this tab has seen since you opened it. The permanent record is the tamper-proof log, not this chart.
+          </p>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Recent tasks</span>
+            <span class="spacer"></span>
+            <button class="tiny ghost" id="ov-go-runs">Open</button>
+          </div>
+          <ul class="plain" id="ov-runs"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================== RUNS ======= -->
+    <section class="view hide" id="view-runs">
+      <h2 class="view-title">Do a task
+        <span class="badge" id="run-stream-state">idle</span>
+        <span class="layer-tag">L5 agent</span>
+      </h2>
+      <p class="view-lede">
+        Type what you want done. The assistant writes a plan, then works through it one step at a time, and each step has to pass a test before it counts. You watch it happen below.
+      </p>
+
+      <div class="card">
+        <!-- What kind of deliverable this run is for. Not a filter over the
+             result: it forces the task class the planner is routed under, so
+             flipping it can change which model plans the run, and it tells the
+             planner which tool can actually produce that deliverable. Auto is
+             the old behaviour - the classifier decides. -->
+        <div class="mode-row">
+          <span class="mode-label">deliver</span>
+          <div class="segmented" id="run-mode" role="group"
+               aria-label="what this run should deliver">
+            <button type="button" class="seg active" data-mode="auto"
+                    title="let the classifier decide">Auto</button>
+            <button type="button" class="seg" data-mode="code"
+                    title="the deliverable is working code, run in the sandbox">Code</button>
+            <button type="button" class="seg" data-mode="document"
+                    title="the deliverable is a Word, Excel or PowerPoint file">Document</button>
+          </div>
+          <span class="tiny muted" id="run-mode-hint"></span>
+        </div>
+        <form class="inline" id="form-run">
+          <input class="grow" id="run-goal" type="text" autocomplete="off"
+                 placeholder="Calculate the pressure drop and write it to a report file">
+          <label class="check"><input type="checkbox" id="run-plan-only"> plan only</label>
+          <button type="submit" id="run-submit">Run</button>
+        </form>
+        <div class="suggest-row" id="run-examples"></div>
+      </div>
+
+      <div class="row split">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">What it is doing</span>
+            <span class="spacer"></span>
+            <span class="badge hide" id="run-status">-</span>
+            <span class="badge hide" id="run-label">-</span>
+          </div>
+          <div class="mono muted tiny hide" id="run-id"></div>
+          <!-- The resting state of the main panel. It used to be 380px of
+               empty card with two placeholder badges reading "-", which looks
+               like something failed to load rather than like a page waiting
+               for you to type. -->
+          <div class="empty" id="run-idle">
+            Nothing is running. Type what you want done in the box above and press Run.
+          </div>
+          <div class="notice bad hide" id="run-error" style="margin-top:10px"></div>
+          <ol class="timeline" id="steps" style="margin-top:12px"></ol>
+        </div>
+
+        <!-- Three unrelated things used to share one card headed "Budget":
+             the limits, the files produced, and every earlier task. None of
+             them is a budget, and stacked with a small rule between them they
+             read as one list nobody could parse. One card per idea now, each
+             with its own heading and room around it. -->
+        <div class="stack">
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">How much it has used</span>
+              <span class="spacer"></span>
+              <span class="card-sub">limits stop a task running away</span>
+            </div>
+            <dl class="kv" id="run-budget"></dl>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">Files it produced</span>
+              <span class="spacer"></span>
+              <span class="card-sub">click to open</span>
+            </div>
+            <ul class="plain" id="artifacts"></ul>
+          </div>
+
+          <!-- WHICH MODEL DID WHAT.
+               "Is it using one model for everything, or a different one per
+               task?" is the first question anyone asks watching a run, and the
+               page had no answer to it. The router already records every
+               decision against the run; this reads them back in the order they
+               happened, so the panel tells the order the system really follows:
+               the prompt is classified FIRST, a model is chosen for that class,
+               and every later decision is routed again on its own merits. -->
+          <div class="card">
+            <div class="card-head">
+              <span class="card-title">Which model did what</span>
+              <span class="spacer"></span>
+              <span class="card-sub" id="routing-summary">-</span>
+            </div>
+            <p class="tiny muted" style="margin:0 0 10px" id="routing-how"></p>
+            <div id="routing-steps"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- The two ways a person reads a result. Code is read as source plus
+           what it printed when it ran; a document is read by opening it. One
+           list of filenames with digests serves neither, so there is a tab per
+           kind and every artifact appears under exactly one of them. -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">What you get back</span>
+          <span class="badge" id="out-mode">auto</span>
+          <span class="spacer"></span>
+          <div class="segmented" id="out-tabs" role="group"
+               aria-label="which kind of output to show">
+            <button type="button" class="seg active" data-out="code">
+              Code <b id="out-code-count">0</b></button>
+            <button type="button" class="seg" data-out="document">
+              Document <b id="out-doc-count">0</b></button>
+          </div>
+        </div>
+        <div id="out-code"></div>
+        <div id="out-document" class="hide"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Earlier tasks</span>
+          <span class="spacer"></span>
+          <span class="card-sub">select one to see what it did</span>
+        </div>
+        <ul class="plain" id="run-history"></ul>
+      </div>
+    </section>
+
+    <!-- ================================================== CORPUS ====== -->
+    <section class="view hide" id="view-corpus">
+      <h2 class="view-title">My documents <span class="badge" id="kb-state">-</span></h2>
+      <p class="view-lede">
+        Add your manuals, reports and scans here, then ask questions about them. Every answer has to quote a real passage from a real page, or you do not get an answer at all.
+      </p>
+
+      <!-- Adding to the corpus from the browser. The gateway binds loopback, so
+           the only page that can reach this is one on this machine. -->
+      <div class="card">
+        <!-- A real card-head, like every other card. A bare .card-title got
+             none of the spacing the rest of the page gives a heading, so the
+             controls sat directly under the words. -->
+        <div class="card-head">
+          <span class="card-title">Add a document</span>
+          <span class="spacer"></span>
+          <span class="card-sub" id="kb-upload-state"></span>
+        </div>
+        <div class="inline">
+          <input type="file" id="kb-file"
+                 accept=".pdf,.txt,.md,.png,.jpg,.jpeg,.tif,.tiff">
+          <select id="kb-label" title="Classification to record for this document">
+            <option value="">classification: auto</option>
+            <option value="INTERNAL">INTERNAL</option>
+            <option value="CONFIDENTIAL">CONFIDENTIAL</option>
+            <option value="RESTRICTED">RESTRICTED</option>
+          </select>
+          <button id="kb-upload">Upload &amp; ingest</button>
+        </div>
+        <!-- Where a long read reports itself. Hidden until there is one. -->
+        <div class="ingest hide" id="kb-progress"></div>
+        <p class="tiny muted" style="margin:14px 0 0">
+          The file is read here on this computer, recorded in the tamper-proof log, and added to the search index. Scans and photos are read with text recognition. If a page cannot be read it is reported as a gap - never quietly added as blank.
+        </p>
+      </div>
+
+      <div class="row c3">
+        <div class="card"><div class="stat">
+          <div class="stat-value" id="kb-docs">-</div>
+          <div class="stat-label">documents</div></div></div>
+        <div class="card"><div class="stat">
+          <div class="stat-value" id="kb-chunks">-</div>
+          <div class="stat-label">chunks indexed</div></div></div>
+        <div class="card"><div class="stat">
+          <div class="stat-value bad" id="kb-gaps">-</div>
+          <div class="stat-label">pages nothing could read</div></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Ask a question</span>
+          <span class="spacer"></span>
+          <span class="card-sub">every answer quotes the page it came from</span>
+        </div>
+        <form class="inline" id="form-ask">
+          <input class="grow" id="ask-q" type="text" autocomplete="off"
+                 placeholder="What is the suction pressure trip setpoint for P-101A?">
+          <select id="ask-role" class="hide" tabindex="-1" aria-hidden="true">
+            <option value="engineer">engineer</option>
+            <option value="operator">operator</option>
+            <option value="admin">admin</option>
+            <option value="auditor">auditor</option>
+          </select>
+          <span class="chip" id="ask-as">asking as ...</span>
+          <button type="submit">Ask</button>
+        </form>
+        <div class="suggest-row" id="ask-examples"></div>
+        <div id="ask-out" style="margin-top:12px"></div>
+      </div>
+
+      <div class="row split">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">How each page was read</span>
+            <span class="spacer"></span>
+            <span class="card-sub">typed text, scanned, or unreadable</span>
+          </div>
+          <div id="kb-coverage"></div>
+          <p class="tiny muted" style="margin:10px 0 0" id="kb-detail"></p>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Reading scans and photos</span>
+            <span class="spacer"></span>
+            <span class="card-sub">what this PC can read a picture with</span>
+          </div>
+          <dl class="kv" id="kb-imagepath"></dl>
+          <p class="tiny muted" style="margin:10px 0 0" id="kb-imagepath-detail"></p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">Documents</span></div>
+        <div class="scroll"><table class="grid">
+          <thead><tr>
+            <th>document</th><th>classification</th>
+            <th class="num">pages</th><th class="num">read</th><th>gaps</th>
+          </tr></thead>
+          <tbody id="kb-docs-list"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ============================================= SOVEREIGNTY ====== -->
+    <section class="view hide" id="view-sovereignty">
+      <h2 class="view-title">Proof nothing left this PC
+        <span class="layer-tag">L0 sovereignty</span>
+      </h2>
+      <p class="view-lede">
+        The promise is that none of your data ever leaves this computer. The only honest way to show it is to try to send something out on purpose and watch it fail. On a machine with no firewall the result is inconclusive - getting no reply looks exactly the same as an unplugged cable.
+      </p>
+
+      <div class="row c2">
+        <div class="card"><div class="stat">
+          <div class="stat-value good" id="sv-external">-</div>
+          <div class="stat-label">packets sent by this whole PC, all apps</div>
+          <div class="stat-note" id="sv-external-note">-</div>
+        </div></div>
+        <div class="card"><div class="stat">
+          <div class="stat-value" id="sv-blocked">-</div>
+          <div class="stat-label">attempts the firewall refused</div>
+          <div class="stat-note">the canary is what makes this tick</div>
+        </div></div>
+      </div>
+
+      <div class="row split">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Try to send something out</span>
+            <span class="spacer"></span>
+            <button id="btn-canary">Fire the canary</button>
+          </div>
+          <!-- The wording follows what the probe can actually prove. With a
+               policy armed it aims at an address that genuinely has a route, so
+               a refusal is the policy refusing THIS program; with nothing armed
+               it aims at a documentation address and can only report silence.
+               The old copy described the second and implied the first. -->
+          <p class="tiny muted" style="margin:0 0 10px">
+            On purpose, this application tries to open a connection to the internet. If a policy refuses it, the block is working - and the rest of this computer stays online, because the block is on this program alone. This is the system testing itself.
+          </p>
+          <div class="notice hide" id="canary-verdict"></div>
+          <div id="canary-probes" style="margin-top:10px"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Network watch</span>
+            <span class="spacer"></span>
+            <span class="badge" id="sv-sentinel-badge">-</span>
+          </div>
+          <dl class="kv" id="sv-sentinel"></dl>
+          <p class="tiny muted" style="margin:10px 0 0" id="sv-sentinel-detail"></p>
+        </div>
+      </div>
+
+      <!-- THE SECOND PROOF, AND THE STRONGER ONE.
+           The canary shows what this MACHINE does with an outbound packet, and
+           on a box without nftables that is inconclusive. This shows what the
+           SANDBOX does with one - and there the answer is absolute, because the
+           container is created with no network interface at all. It lived only
+           at POST /api/tools/sandbox/probe, which meant the best evidence this
+           box produces was reachable only from a terminal. -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Code runs with no network at all</span>
+          <span class="spacer"></span>
+          <span class="badge" id="probe-state">not run yet</span>
+          <button id="btn-probe">Try to reach the internet from inside</button>
+        </div>
+        <p class="tiny muted" style="margin:0 0 14px">
+          Runs real Python inside the execution sandbox that deliberately tries to
+          fetch a web page. The container is built with no network interface, so
+          the attempt cannot leave - and this is the run that shows it rather
+          than asserting it.
+        </p>
+        <div class="notice hide" id="probe-verdict"></div>
+        <pre class="code hide" id="probe-out"></pre>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Tamper-proof record</span>
+          <span class="spacer"></span>
+          <span class="badge" id="sv-chain-badge">-</span>
+          <button class="tiny ghost" id="btn-verify">Verify</button>
+        </div>
+        <div class="chain" id="sv-chain"></div>
+        <p class="tiny muted" style="margin:10px 0 0" id="sv-chain-detail"></p>
+      </div>
+
+      <!-- The operations console. Every column is a field the chain actually
+           records; every value is a word this system already uses -
+           ToolExecutor.invoke, ALLOWED/DENIED, the real SideEffect and Label
+           enums. A row is one audit record, and carries that record's own
+           digest so it can be matched back to the chain above. -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Everything this PC did</span>
+          <span class="card-sub">ToolExecutor.invoke &rarr; policy evaluation &rarr; role &rarr; label &rarr; side effect &rarr; result</span>
+          <span class="spacer"></span>
+          <div class="segmented" id="audit-filter" role="group"
+               aria-label="which activity to show">
+            <button type="button" class="seg active" data-audit="all">All</button>
+            <button type="button" class="seg" data-audit="gate">Policy gate</button>
+            <button type="button" class="seg" data-audit="denied">Refused</button>
+            <button type="button" class="seg" data-audit="failed">Failed</button>
+          </div>
+        </div>
+        <!-- The only thing that appears above the log is a PROBLEM with the
+             log itself: an event this build has no mapping for. Standing facts
+             about the box belong to the honesty chip in the topbar, which is
+             on every view; repeating one here as a permanent band is how a
+             warning strip stops being read. -->
+        <div class="notice warn hide" id="audit-unmapped"></div>
+        <div class="scroll tall" id="audit-tail">
+          <table class="grid console">
+            <thead><tr>
+              <th class="col-seq">seq</th>
+              <th class="col-time">time</th>
+              <th>actor / role</th>
+              <th>operation</th>
+              <th>label</th>
+              <th>effect</th>
+              <th>decision</th>
+              <th>result</th>
+            </tr></thead>
+            <tbody id="audit-rows"></tbody>
+          </table>
+        </div>
+        <p class="tiny muted" style="margin:10px 0 0">
+          Select a row for the full record - the arguments digest, the run and step it belongs to, and the hash that links it to the record before it.
+        </p>
+      </div>
+    </section>
+
+    <!-- ================================================== ROUTER ====== -->
+    <section class="view hide" id="view-router">
+      <h2 class="view-title">Models
+        <span class="layer-tag">L1/L2 fabric and router</span>
+      </h2>
+      <p class="view-lede">
+        One graphics card, several AI models, one choice per request. Working out that choice costs nothing, so you can see the reasoning while you are still typing.
+      </p>
+
+      <div class="row split-r">
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Graphics memory</span>
+            <span class="spacer"></span>
+            <span class="card-sub" id="rt-vram-sub">-</span>
+          </div>
+          <p class="tiny muted" id="rt-vram-why" style="margin:0 0 10px"></p>
+          <div class="center" id="rt-vram-donut"></div>
+          <dl class="kv" id="rt-vram-kv" style="margin-top:12px"></dl>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Which model would be used?</span>
+            <span class="spacer"></span>
+            <span class="badge" id="rt-provenance">ready</span>
+          </div>
+          <div class="mode-row">
+            <span class="mode-label">as</span>
+            <div class="segmented" id="route-mode" role="group"
+                 aria-label="which task class to score this prompt as">
+              <button type="button" class="seg active" data-mode="auto"
+                      title="let the classifier decide">Auto</button>
+              <button type="button" class="seg" data-mode="code"
+                      title="score it as a coding task">Code</button>
+              <button type="button" class="seg" data-mode="document"
+                      title="score it as a drafting task">Document</button>
+            </div>
+            <span class="tiny muted">same prompt, different class - watch the winner change</span>
+          </div>
+          <form class="inline" id="form-route">
+            <input class="grow" id="route-prompt" type="text" autocomplete="off"
+                   placeholder="Script the NPSH-available calculation and unit-test it">
+            <label class="check"><input type="checkbox" id="route-images"> images</label>
+            <button type="submit">Explain</button>
+          </form>
+          <div class="suggest-row" id="route-examples"></div>
+          <div id="route-out" style="margin-top:12px"></div>
+        </div>
+      </div>
+
+
+      <!-- ADDING A MODEL.
+           The brief asks that new open-weight models be addable later without
+           redesigning the system. This is that path, and it is admin-only:
+           staging a model puts a file the router may run in front of
+           confidential data. The gate is enforced by the gateway, not by
+           hiding buttons - the panel dims because the server will refuse. -->
+      <div class="card" id="add-model-card">
+        <div class="card-head">
+          <span class="card-title">Add a new model</span>
+          <span class="spacer"></span>
+          <span class="badge" id="add-model-gate">administrator only</span>
+        </div>
+
+        <div class="notice warn" id="add-model-denied">
+          Only an administrator can add a model to this computer. Change
+          <b>You are</b> in the top bar to <b>an administrator</b> if that is
+          your job here. Attempts are recorded either way.
+        </div>
+
+        <div id="add-model-body" class="hide">
+          <!-- Two routes, and the panel says which one to prefer. A 4.5 GB
+               file belongs in the folder via the operating system; the drop
+               zone exists because it is what people reach for first. -->
+          <div class="row split">
+            <div>
+              <h3 class="sec">1. Put the file on this computer</h3>
+              <div class="dropzone" id="model-drop" tabindex="0"
+                   role="button" aria-label="choose or drop a .gguf model file">
+                <b>Drop a .gguf file here</b>
+                <span class="tiny muted">or click to choose one</span>
+                <input type="file" id="model-file" accept=".gguf" class="hide">
+              </div>
+              <p class="tiny muted" style="margin:10px 0 0">
+                Model files are gigabytes. Copying one into the models folder
+                in File Explorer and pressing <b>Scan the folder</b> is faster
+                and far less fragile than sending it through this page.
+              </p>
+              <div class="inline" style="margin-top:12px">
+                <button class="ghost" id="model-scan">Scan the folder</button>
+                <span class="tiny mono muted" id="model-dir">-</span>
+              </div>
+              <div id="model-found" style="margin-top:12px"></div>
+            </div>
+
+            <div>
+              <h3 class="sec">2. What happens next</h3>
+              <ol class="steps-list">
+                <li>The file's header is read here on this computer - no
+                    network - to get its architecture, context length and size.</li>
+                <li>Its SHA-256 is recorded, so the box can tell later if the
+                    file was swapped.</li>
+                <li>It is written into <span class="mono">config/models.yaml</span>
+                    <b>and</b> into this profile's available list. Both are
+                    needed: a model in only the first is never chosen, with no
+                    error anywhere.</li>
+                <li>The registry reloads. The model is a routing candidate on
+                    the next request - no restart, no code change.</li>
+              </ol>
+              <div class="notice" id="add-model-caveat">
+                Its memory use and speed are <b>estimated</b> from the file, and
+                its quality scores are <b>seeds, not measurements</b>. Run the
+                evaluation harness before trusting how the router ranks it.
+              </div>
+            </div>
+          </div>
+
+          <div id="model-stage-out" style="margin-top:6px"></div>
+
+          <h3 class="sec">Where to get a model</h3>
+          <ol class="steps-list">
+            <li>On a computer that <b>does</b> have internet, open
+                <span class="mono">huggingface.co</span> and search for the
+                model you want with <span class="mono">GGUF</span> in the name -
+                for example <span class="mono">Qwen2.5-7B-Instruct-GGUF</span>.
+                GGUF is the only format this box loads.</li>
+            <li>Download one <span class="mono">.gguf</span> file, not the whole
+                repository. <span class="mono">Q4_K_M</span> is the usual choice:
+                roughly half the size of the original with little quality lost.
+                As a rule of thumb the file must be about 1&nbsp;GB smaller than
+                your graphics memory.</li>
+            <li>For a model that reads images, also download its
+                <span class="mono">mmproj-*.gguf</span> projector file. Without
+                it the model loads, answers, and never looks at the picture -
+                so this box refuses images until the projector is present.</li>
+            <li>Copy the file onto a USB stick, then into the models folder
+                shown above on this computer.</li>
+            <li>Press <b>Scan the folder</b>, check what it found, and press
+                <b>Add it</b>.</li>
+          </ol>
+          <p class="tiny muted" style="margin:2px 0 0">
+            Nothing in this process reaches the internet from this computer. The
+            download happens on a different machine, and the file arrives by
+            hand - which is the whole point of an air-gapped box.
+          </p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">Models on this PC</span>
+          <span class="spacer"></span>
+          <span class="card-sub" id="rt-registry-sub">-</span>
+          <!-- Configured-but-absent models are still real configuration and
+               still matter to an administrator staging files. They are just
+               not what somebody asks this page. Hidden by default, one click
+               away, and the count is always on screen either way. -->
+          <label class="check" title="models configured but whose file is not on this computer">
+            <input type="checkbox" id="rt-show-all"> show the ones with no file
+          </label>
+        </div>
+        <div class="scroll"><table class="grid">
+          <thead><tr>
+            <th>model</th><th>role</th><th class="num">tier</th>
+            <th class="num">vram</th><th class="num">ctx</th>
+            <th>weights file</th><th>loaded now</th>
+          </tr></thead>
+          <tbody id="rt-registry"></tbody>
+        </table></div>
+      </div>
+    </section>
+
+    <!-- ============================================= ENGINEERING DRAWINGS ==== -->
+    <section class="view hide" id="view-engineering">
+      <h2 class="view-title">Engineering Drawings & Vision
+        <span class="badge" id="eng-vlm-badge">vision ready</span>
+        <span class="layer-tag">ASME Y14.5 & ISO 129-1</span>
+      </h2>
+      <p class="view-lede">
+        Upload an engineering drawing, blueprint, or P&ID. The hybrid pipeline extracts dimensions, tolerances, and geometric features via OpenCV & OCR, validates against ASME Y14.5 / ISO 129-1 standards, and reasons over design intent using the local vision model.
+      </p>
+
+      <div class="row c4" style="margin-bottom: 16px;">
+        <div class="card">
+          <div class="stat">
+            <div class="stat-value" id="eng-kpi-dims">0</div>
+            <div class="stat-label">dimensions extracted</div>
+            <div class="stat-note" id="eng-kpi-dims-note">tolerances & limits</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="stat">
+            <div class="stat-value" id="eng-kpi-holes">0</div>
+            <div class="stat-label">holes / circles detected</div>
+            <div class="stat-note" id="eng-kpi-holes-note">Hough geometry</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="stat">
+            <div class="stat-value good" id="eng-kpi-rules">-</div>
+            <div class="stat-label">ASME / ISO compliance</div>
+            <div class="stat-note" id="eng-kpi-rules-note">rules engine</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="stat">
+            <div class="stat-value" id="eng-kpi-scale">Uncalibrated</div>
+            <div class="stat-label">drawing scale</div>
+            <div class="stat-note" id="eng-kpi-scale-note">mm per pixel</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row split">
+        <!-- LEFT: Upload & Geometry Viewer -->
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Drawing Inspection</span>
+            <span class="spacer"></span>
+            <select id="eng-standard-select" style="font-size: 12px; padding: 2px 6px;">
+              <option value="ASME Y14.5">ASME Y14.5 (2018)</option>
+              <option value="ISO 129-1">ISO 129-1 (2018)</option>
+            </select>
+          </div>
+
+          <div style="border: 2px dashed var(--line); border-radius: 8px; padding: 20px; text-align: center; margin: 10px 0; background: var(--bg-1);">
+            <input type="file" id="eng-file-input" accept="image/*,.png,.jpg,.jpeg,.bmp,.webp,.tiff" style="display:none">
+            <button class="btn ghost" id="eng-upload-btn" type="button">Select Drawing Image</button>
+            <p class="tiny muted" style="margin: 8px 0 0;" id="eng-file-label">or drag and drop technical drawing (PNG, JPG)</p>
+          </div>
+
+          <div id="eng-preview-container" style="display:none; margin-top: 10px; text-align: center;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span class="tiny muted" id="eng-view-mode-label">Inspection View:</span>
+              <div class="segmented" id="eng-view-toggle" role="group">
+                <button type="button" class="seg active" id="eng-btn-annotated">CV Overlay</button>
+                <button type="button" class="seg" id="eng-btn-original">Original</button>
+              </div>
+            </div>
+            <img id="eng-preview-img" style="max-width: 100%; max-height: 420px; border-radius: 6px; border: 1px solid var(--line); object-fit: contain;">
+          </div>
+
+          <div class="row" style="margin-top: 14px; gap: 10px;">
+            <button class="btn primary" id="eng-analyze-btn" style="flex: 1;">Run Measurement & Rules Engine</button>
+          </div>
+          <div id="eng-status-text" class="tiny muted center hide" style="margin-top: 8px;"></div>
+
+          <!-- Live Pipeline Telemetry -->
+          <div id="eng-telemetry-container" class="hide" style="margin-top: 14px; background: var(--bg-1); border: 1px solid var(--line); border-radius: 6px; padding: 10px; text-align: left;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+              <span class="tiny bold">Live CV & Rules Pipeline Telemetry</span>
+              <span class="tiny mono muted" id="eng-telemetry-total">-</span>
+            </div>
+            <ul class="plain tiny" id="eng-telemetry-list" style="margin: 0; display: flex; flex-direction: column; gap: 4px;"></ul>
+          </div>
+
+          <h3 class="sec" style="margin-top: 18px;">Scale Calibration</h3>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <input type="number" id="eng-known-mm" placeholder="Known mm (e.g. 50)" style="width: 130px; font-size: 12px; padding: 4px 8px;">
+            <input type="number" id="eng-measured-px" placeholder="Measured px (e.g. 200)" style="width: 130px; font-size: 12px; padding: 4px 8px;">
+            <button class="tiny ghost" id="eng-calibrate-btn" type="button">Calibrate</button>
+            <span class="tiny muted" id="eng-cal-feedback">1 mm = ? px</span>
+          </div>
+        </div>
+
+        <!-- RIGHT: Dimensions & Rules Engine Results -->
+        <div class="card">
+          <div class="card-head">
+            <span class="card-title">Extracted Dimensions & Tolerances</span>
+            <span class="spacer"></span>
+            <span class="card-sub" id="eng-dims-sub">Authoritative Design Intent</span>
+          </div>
+
+          <div class="scroll short" style="max-height: 230px;">
+            <table class="grid">
+              <thead><tr>
+                <th>callout</th><th>feature</th><th class="num">nominal</th>
+                <th class="num">location (px)</th>
+                <th class="num">lower limit</th><th class="num">upper limit</th><th>tolerance</th>
+              </tr></thead>
+              <tbody id="eng-dims-table">
+                <tr><td colspan="7" class="muted center">Upload a drawing to inspect dimensions</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <h3 class="sec" style="margin-top: 16px;">Rules Engine Validation</h3>
+          <div class="scroll short" style="max-height: 180px;">
+            <ul class="plain" id="eng-rules-list">
+              <li class="muted tiny">Rules check results will appear here after analysis.</li>
+            </ul>
+          </div>
+
+          <h3 class="sec" style="margin-top: 16px;">Tolerance Stack-up Analysis</h3>
+          <div id="eng-stack-card" class="tiny" style="background: var(--bg-1); padding: 10px; border-radius: 6px; border: 1px solid var(--line);">
+            <p class="muted" style="margin: 0;">Stack analysis computes worst-case and statistical (RSS) variation limits.</p>
+          </div>
+
+          <h3 class="sec" style="margin-top: 16px;">Local Vision Reasoning (VLM / LLM)</h3>
+          <div id="eng-vlm-box" class="tiny" style="background: var(--bg-1); padding: 12px; border-radius: 6px; border: 1px solid var(--line); white-space: pre-wrap; line-height: 1.5;">
+            <span class="muted">Vision-language model reasoning over drawing structure, geometry, and standards will render here.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ask Questions About This Drawing (Interactive Q&A Assistant) -->
+      <div class="card" style="margin-top: 16px;">
+        <div class="card-head">
+          <span class="card-title">Ask Questions About This Drawing</span>
+          <span class="spacer"></span>
+          <span class="badge" id="eng-chat-model-badge">AI Assistant Grounded in ASME & Geometry</span>
+        </div>
+        <p class="tiny muted" style="margin: 0 0 10px;">
+          Ask about specific dimensions, tolerances, GD&T symbols, clearance fits, hole pitch, or ASME Y14.5 / ISO standards for this drawing.
+        </p>
+
+        <!-- Prompt suggestion chips -->
+        <div class="suggest-row" id="eng-chat-chips" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px;">
+          <button type="button" class="tiny ghost eng-chip">Why did ASME 1.4.a flag a warning?</button>
+          <button type="button" class="tiny ghost eng-chip">What are the critical mating tolerances?</button>
+          <button type="button" class="tiny ghost eng-chip">What is the recommended fit for the shaft and bearing?</button>
+          <button type="button" class="tiny ghost eng-chip">What is the mounting hole pitch and base dimension?</button>
+        </div>
+
+        <!-- Chat History -->
+        <div id="eng-chat-history" class="scroll short" style="max-height: 280px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; background: var(--bg-1); padding: 12px; border-radius: 6px; border: 1px solid var(--line);">
+          <div class="tiny muted" id="eng-chat-empty">No questions asked yet. Click a suggestion above or type your question below.</div>
+        </div>
+
+        <!-- Input Form -->
+        <form class="inline" id="eng-chat-form">
+          <input class="grow" id="eng-chat-input" type="text" autocomplete="off" placeholder="Ask anything about this drawing (e.g. 'Is the tolerance stack within 1mm?')...">
+          <button type="submit" id="eng-chat-submit">Ask Assistant</button>
+        </form>
+      </div>
+    </section>
+
+    <footer class="foot" id="foot-note">
+      Nothing on this page comes from the internet. Every file is served from this computer, and an automatic check makes sure it stays that way.
+    </footer>
+  </main>
+</div>
+
+<script src="charts.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

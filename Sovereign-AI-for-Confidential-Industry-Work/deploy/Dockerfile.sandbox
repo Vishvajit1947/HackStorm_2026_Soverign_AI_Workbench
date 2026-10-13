@@ -1,0 +1,74 @@
+# The code.exec sandbox (§06).
+#
+# Deliberately minimal. It holds the toolchains code.exec can run and the numeric
+# libraries an engineering calculation needs - nothing else. No shell utilities
+# worth having, no package manager at runtime, no network client libraries beyond
+# what stdlib unavoidably ships.
+#
+# It carries COMPILERS as well as interpreters, because "write me a C program"
+# is an ordinary request in this workbench and the alternative was running C
+# through the Python interpreter and reporting the NameError as a result. A
+# compiler inside a container with no network interface, a read-only root
+# filesystem and no capabilities is not an escalation: there is nothing for the
+# code it produces to reach that the Python interpreter could not already reach.
+#
+# Built once and carried to the venue as a tarball:
+#   docker compose build sandbox-runner
+#   docker save kavach/sandbox:0.1.0 -o sandbox.tar
+
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    MPLCONFIGDIR=/work/.mpl
+
+# EVERY toolchain `code.exec` dispatches to - see services/kavach/tools/impl/
+# languages.py, which is the list this has to satisfy exactly. Anything in that
+# table and absent here is REFUSED at call time with the line to add, rather
+# than run as something else; a test cross-checks the two.
+#
+# Go and Rust are in, despite roughly doubling an image that has to be carried
+# to an air-gapped venue as a tarball. The alternative is a workbench that
+# answers "write me a Go program" with an install instruction, on a box whose
+# whole claim is that it does the work locally - and the size is paid once, at
+# build time, on a machine that has a network.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+        gcc \
+        g++ \
+        libc6-dev \
+        default-jdk-headless \
+        nodejs \
+        golang-go \
+        rustc \
+        ruby \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+
+# numpy/sympy/pandas cover the overwhelming majority of what a plant calculation
+# needs. Add here rather than letting generated code pip-install at runtime -
+# there is no network to install from, which is the point.
+RUN pip install --no-cache-dir \
+        numpy==2.1.3 \
+        sympy==1.13.3 \
+        pandas==2.2.3 \
+ && rm -rf /root/.cache
+
+# Drop the package manager so nothing can be installed even if a future change
+# accidentally grants network access.
+RUN rm -rf /usr/local/lib/python3.12/ensurepip \
+ && python -c "import shutil, sys; shutil.rmtree('/usr/local/lib/python3.12/site-packages/pip', ignore_errors=True)"
+
+# Runs as nobody (65534) - set by --user at run time, but declared here too so
+# the image is not root-by-default if someone runs it directly.
+USER 65534:65534
+
+WORKDIR /work
+
+# No ENTRYPOINT: the executor passes an explicit command built from its own
+# language table - `python /sandbox/main.py`, `gcc ... && /work/program`. A
+# compiled language needs a shell to join those two, and what that shell sees is
+# fixed text from the table; the model's code only ever arrives as the CONTENTS
+# of the file being compiled.
+CMD ["python", "-c", "print('kavach sandbox ready')"]

@@ -1,0 +1,194 @@
+# Held-out evaluation set (§04, "Building quality[m][class]").
+#
+# HELD OUT means these prompts are NOT in prototypes.yaml. If you copy one across
+# to fix a misroute, delete it from here first - otherwise the routing accuracy
+# number is measuring memorisation and is worthless.
+#
+# routing:  labelled prompts for the classifier confusion matrix. Runs on any
+#           backend, including mock, because it only needs the embedder.
+# quality:  tasks with programmatic checks, used to measure quality[m][class].
+#           Requires real weights - the harness refuses to write measured values
+#           from a mock backend.
+
+routing:
+  code_generation:
+    - "Put together a small program that reads the flow log and averages it"
+    - "I need a function that converts barg to psia"
+    - "Automate pulling the tag numbers out of these filenames"
+    - "There is a bug in this sorting routine, can you fix it"
+    - "Write me something to check the CSV columns are all present"
+    - "Add tests around the heat balance routine"
+
+  doc_summary:
+    - "Give me the gist of this shutdown report"
+    - "What are the headline findings here, in a paragraph"
+    - "Shorten this procedure into something I can read in two minutes"
+    - "Pull the important bits out of this vendor letter"
+    - "I need a one-paragraph overview of this audit"
+    - "Tell me what matters in this 30-page reliability study"
+
+  visual_doc:
+    - "Have a look at this photo of the gauge and tell me the reading"
+    - "This is a scan of the old logbook, what does it say"
+    - "Pick out the equipment tags on this diagram"
+    - "The note is handwritten, can you make it out"
+    - "Turn this picture of the table into text"
+    - "What instruments appear on this section of the drawing"
+
+  numerical_calc:
+    - "How much head does the pump need for a 12 metre lift"
+    - "Find the pressure loss for this line size and flow"
+    - "What is the residence time if the tank is half full at this rate"
+    - "Give me the heat transfer area needed for this duty"
+    - "Work out the wall thickness required at 20 barg"
+    - "How fast is the fluid moving in a 4 inch line at 30 cubic metres an hour"
+
+  official_drafting:
+    - "Put together a formal request for extra shutdown days"
+    - "I need to write to the vendor about the late delivery"
+    - "Compose a note to the GM recommending we replace the bundle"
+    - "Write up a justification for this spend"
+    - "Prepare something formal closing out this audit point"
+    - "Draft correspondence seeking approval for the modification"
+
+  kb_qa:
+    - "Does our procedure allow this kind of isolation"
+    - "What is written in our manual about purging before entry"
+    - "Where do our standards cover flange torque"
+    - "Per our documentation, how often should this be inspected"
+    - "What is the company position on working during heavy rain"
+    - "Our SOP mentions a permit for this, what does it require"
+
+  agentic_multi:
+    - "Look at this report, run the numbers, and write it up for approval"
+    - "Take the readings from this scan and build me a spreadsheet"
+    - "Read the procedure, spot the gaps, and produce an action list"
+    - "Pull the data out, calculate the rate, and draft the note"
+    - "Check this drawing against the standard and document the differences"
+    - "Summarise these minutes and turn the actions into a tracker"
+
+# Programmatic checks. `check` names a function in scripts/eval_harness.py.
+#
+# These prompts exist to TELL MODELS APART, which is a stricter requirement than
+# being representative. An earlier set of 1-3 easy prompts per class scored every
+# model 1.00 on nearly everything; written into models.yaml that made quality a
+# tie, so the router fell through to the latency term and sent a summarisation
+# job to the coder model - the exact "ranks by speed while every decision still
+# looks plausible" failure the scoring notes warn about. A benchmark that cannot
+# separate two models is not a measurement, it is a rubber stamp.
+#
+# So: code tasks are graded by RUNNING the code against an assertion, not by
+# checking that it parses. Numeric tasks carry tolerances tight enough that a
+# unit error fails - including bar->kPa, which this box has actually watched a
+# 7B get wrong by a factor of 1000. Several prompts per class, so a score is a
+# fraction rather than a coin flip.
+quality:
+  code_generation:
+    - prompt: "Write a Python function `reynolds(rho, v, d, mu)` returning the Reynolds
+        number rho*v*d/mu. Return only the function."
+      check: python_runs_assertion
+      expect: "abs(reynolds(998, 1.2, 0.1524, 0.001) - 182514.24) < 1"
+    - prompt: "Write a Python function `bar_to_kpa(bar)` converting gauge pressure in
+        bar to kilopascals. Return only the function."
+      check: python_runs_assertion
+      expect: "abs(bar_to_kpa(12) - 1200.0) < 0.5"
+    - prompt: "Write a Python function `npsha(p_atm, p_vap, rho, g, h_static, h_losses)`
+        returning NPSH available in metres, where pressures are in pascals:
+        (p_atm - p_vap)/(rho*g) + h_static - h_losses. Return only the function."
+      check: python_runs_assertion
+      expect: "abs(npsha(101325, 2339, 998, 9.81, 3.0, 0.8) - 12.31) < 0.05"
+    - prompt: "Write a Python function `darcy_dp(f, L, D, rho, v)` returning the
+        Darcy-Weisbach pressure drop f*(L/D)*(rho*v**2/2) in pascals. Return only
+        the function."
+      check: python_runs_assertion
+      expect: "abs(darcy_dp(0.02, 50.0, 0.1524, 998.0, 1.2) - 4716.0) < 5"
+    - prompt: "Write a Python function `corrosion_rate(t_prev, t_now, years)` returning
+        wall loss rate in mm/year given two thickness readings in mm. Return only
+        the function."
+      check: python_runs_assertion
+      expect: "abs(corrosion_rate(9.27, 8.89, 1.35) - 0.2815) < 0.002"
+
+  numerical_calc:
+    - prompt: "A 6-inch line carries 40 m3/h. Give the velocity in m/s to two decimals."
+      check: contains_number_near
+      expect: 0.61
+      tolerance: 0.05
+    - prompt: "Convert 12 bar to kilopascals. Reply with the number only."
+      check: contains_number_near
+      expect: 1200
+      tolerance: 0.5
+    - prompt: "Water at 998 kg/m3 flows at 1.2 m/s through a 0.1524 m bore, viscosity
+        0.001 Pa.s. Give the Reynolds number to the nearest whole number."
+      check: contains_number_near
+      expect: 182514
+      tolerance: 200
+    - prompt: "Wall thickness fell from 9.27 mm to 8.89 mm over 1.35 years. Give the
+        corrosion rate in mm/year to three decimals."
+      check: contains_number_near
+      expect: 0.281
+      tolerance: 0.005
+
+  doc_summary:
+    - prompt: "Summarise: 'The pump tripped on low suction pressure at 04:12. Operators
+        restarted it at 04:40 after venting the suction strainer, which was fouled with
+        scale. No injury. Recommendation: shorten the strainer cleaning interval.'"
+      check: mentions_all
+      expect: [strainer, trip, recommend, "04:12"]
+    - prompt: "Summarise in two sentences: 'Ultrasonic gauging on 6-P-1203 recorded
+        8.89 mm against a t-min of 6.40 mm. The line remains fit for service. Next
+        inspection is due in 24 months under MRPL-NDT-UT-2026-089.'"
+      check: mentions_all
+      expect: ["8.89", "6.40", "fit for service", "24"]
+
+    - prompt: "Summarise in two sentences, keeping every number: 'Hydrotest of
+        6-P-1203 held 12.0 bar for 30 minutes with no pressure loss. One weep was
+        found at flange F-12 during stage 1 at 6.0 bar and re-torqued. Accepted by
+        QA/QC on 2026-03-14.'"
+      check: mentions_all
+      expect: ["12", "30", "F-12", "2026-03-14"]
+    - prompt: "Summarise for a shift handover, keeping the tag and the number:
+        'Vibration on P-101B rose from 2.1 to 6.8 mm/s over four weeks. Alarm is
+        7.1 mm/s. Bearing replacement is scheduled for the October shutdown.'"
+      check: mentions_all
+      expect: ["P-101B", "6.8", "7.1", "October"]
+    - prompt: "Summarise, keeping both figures: 'Thickness at CML-04 fell from
+        9.27 mm to 8.89 mm in 1.35 years, giving 0.281 mm/year against a t-min of
+        6.40 mm.'"
+      check: mentions_all
+      expect: ["8.89", "0.281", "6.40"]
+
+  kb_qa:
+    - prompt: "Given this context, answer with a citation. Context: [SOP-114 p.12] Hot
+        work within 15 m of a hydrocarbon line requires a gas test within 30 minutes of
+        starting. Question: what is required before hot work near a hydrocarbon line?"
+      check: has_citation_and_mentions
+      expect: [gas test]
+    - prompt: "Answer using ONLY this context and cite it. Context: [SOP-201 p.4] The
+        suction pressure trip for P-101A is set at 0.8 barg with a 3 second delay.
+        Question: what is the trip setpoint for P-101A and how long is the delay?"
+      check: has_citation_and_mentions
+      expect: ["0.8", "3"]
+
+  official_drafting:
+    - prompt: "Draft the opening paragraph of a work permit for hot work on line
+        6-P-1203, including the permit number WP-2026-0442, the 15 m exclusion radius
+        and the requirement for a gas test within 30 minutes of starting."
+      check: mentions_all
+      expect: ["WP-2026-0442", "hot work", "gas test", "15", "6-P-1203"]
+    - prompt: "Draft a two-sentence deviation note for MOC-2026-118 covering a
+        temporary bypass of interlock PSLL-101, valid until 2026-10-14, approved by
+        the Shift Superintendent."
+      check: mentions_all
+      expect: ["MOC-2026-118", "PSLL-101", "2026-10-14", "bypass"]
+
+  agentic_multi:
+    - prompt: "List the ordered steps to size a relief valve from a datasheet using
+        these tools only: kb.search, calc, fs.write. Number each step and name the
+        tool used at each step."
+      check: mentions_all
+      expect: ["1", "2", "3", "kb.search", "calc", "fs.write"]
+    - prompt: "You must compute a pressure drop and save it. Using only kb.search,
+        calc and fs.write, list the numbered steps and state which tool writes the
+        final file."
+      check: mentions_all
+      expect: ["1", "2", "kb.search", "calc", "fs.write"]

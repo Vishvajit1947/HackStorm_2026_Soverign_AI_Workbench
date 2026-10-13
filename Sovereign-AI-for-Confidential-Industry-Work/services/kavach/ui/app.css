@@ -1,0 +1,1711 @@
+/* Kavach Sovereign Workbench - Design System (L6, §09).
+   Zero-dependency, high-contrast, industrial sovereign interface.
+   Supports flawless dark & light modes with zero theme or view flicker.
+
+   THE PALETTE IS MONGODB'S, PORTED - NOT LINKED. The values below come from a
+   MongoDB design analysis (`npx getdesign@latest add mongodb`, which writes a
+   DESIGN.md reference and no code). Every number was copied into this file by
+   hand. Nothing here is fetched, imported, generated at build time or resolved
+   at runtime: there is no package, no bundle, no lockfile and no request. That
+   is the only way a theme can enter an air-gapped box, and it is why the theme
+   arrived as tokens in the stylesheet the page already served.
+
+   TWO THEMES, BOTH DESIGNED. Light is not dark with the values flipped. Dark
+   is MongoDB's deep-teal band (#001E2B) with the bright green pill sitting on
+   it; light is their documentation surface - stark white, ink-dark text, the
+   same green pill pressed into paper. Each sets its own surfaces, borders,
+   shadows and on-accent text.
+
+   ONE ACCENT, USED SPARINGLY. MongoDB green (#00ED64) for primary actions,
+   focus and the current selection - and, per that design's own rule, never for
+   body text or large surfaces. Everything else is surface, ink or status.
+   Status colours are never the only carrier of meaning - every status in this
+   UI also has a word, and the audit console adds a glyph on top of that,
+   because colour alone fails a projector, a screenshot and a colour-blind
+   reader in three different ways.
+
+   NO WEB FONTS. `font-src 'self'` and an air-gapped box mean nothing is
+   fetched, ever. The stacks NAME Euclid Circular A (MongoDB's display face)
+   and Source Code Pro so a machine that has them installed uses them, and fall
+   through to Inter and then the platform UI font on one that does not - the
+   layout is metric-tolerant either way. A @font-face pointing at a CDN would
+   be blocked by the page's own CSP and would fail `scripts/offline_check.py`.
+*/
+
+:root {
+  /* Dark: MongoDB's deep-teal hero band, laddered into five surfaces. The two
+     ends are their own tokens - #001E2B is brand-teal-deep and #003D4F is
+     brand-teal; the three between are the same hue walked upward so that three
+     distinct surfaces are visible at once. That stacking IS the depth, since
+     this theme reserves shadows for raised things only. Never pure black: #000
+     would flatten the cards into the page. */
+  --bg-0: #001E2B;
+  --bg-1: #002736;
+  --bg-2: #003043;
+  --bg-3: #003D4F;
+  --bg-4: #0A4B5E;
+
+  /* A cool hairline rather than plain white: over the teal ground these
+     composite to about #1C2D38, which is the design's own hairline-dark. */
+  --line: rgba(193, 204, 214, .14);
+  --line-soft: rgba(193, 204, 214, .08);
+  --line-strong: rgba(193, 204, 214, .26);
+
+  --ink: #FFFFFF;
+  --ink-2: #C1CCD6;
+  --muted: #8C9BA8;
+
+  /* Status. The accent is green in this theme, so the SUCCESS green is
+     deliberately the design's deeper brand-green-mid family rather than the
+     electric #00ED64 - "this went well" and "you can press this" must not be
+     the same swatch, which is the rule the old amber theme followed too. */
+  --green: #1FC97D;
+  --green-dim: #00A35C;
+  --amber: #E8A33D;
+  --amber-dim: #946F3F;
+  /* MongoDB's palette has no danger colour - accent-orange is a category tag,
+     not an error - so this red is chosen to sit at the same temperature as the
+     rest rather than borrowed from a token that means something else. */
+  --red: #FF6B6B;
+  --red-dim: #C43D3D;
+  --blue: #7C8CE0;            /* accent-blue, lifted for contrast on teal */
+  --blue-dim: #3D4F9F;
+  --violet: #A98BFF;          /* accent-purple, same treatment */
+
+  /* The accent. --accent is the fill, --accent-ink is what stays legible ON
+     that fill, --accent-text is the accent used AS text on a page surface.
+     Keeping the three apart is what lets the light theme differ properly -
+     bright green on white is unreadable, and that is exactly the case
+     --accent-text exists for. */
+  --accent: #00ED64;
+  --accent-ink: #001E2B;
+  --accent-text: #00ED64;
+  --accent-dim: #00B545;
+  --accent-soft: rgba(0, 237, 100, .14);
+  /* A mark drawn ON the accent fill - the count inside a selected segment.
+     The accent's own ink at low alpha, as a token rather than an rgba() spelled
+     out at the one place it is used, which is how a second palette starts. */
+  --on-accent-soft: rgba(0, 30, 43, .16);
+  --accent-line: rgba(0, 237, 100, .34);
+
+  /* Every status tint and edge, as tokens. They used to be rgba() literals
+     spelled out at each of the twenty-odd places a status is drawn - a SECOND
+     palette, which is how the charts drifted into last season's blue while the
+     rest of the page moved on. Changing a status colour above now changes the
+     badge, the answer box, the verdict cell and the console row with it. */
+  --tint-green: rgba(31, 201, 125, .14);
+  --edge-green: rgba(31, 201, 125, .38);
+  --tint-amber: rgba(232, 163, 61, .13);
+  --edge-amber: rgba(232, 163, 61, .38);
+  --tint-red: rgba(255, 107, 107, .13);
+  --edge-red: rgba(255, 107, 107, .38);
+  --tint-blue: rgba(124, 140, 224, .14);
+  --edge-blue: rgba(124, 140, 224, .38);
+
+  --mono: "Source Code Pro", "JetBrains Mono", ui-monospace, "SFMono-Regular",
+          "Cascadia Mono", Consolas, "Liberation Mono", Menlo, monospace;
+  --sans: "Euclid Circular A", "Inter", system-ui, -apple-system, "Segoe UI",
+          Roboto, "Helvetica Neue", Arial, sans-serif;
+  --display: "Euclid Circular A", "Inter", system-ui, -apple-system, "Segoe UI",
+             Roboto, sans-serif;
+
+  --r-sm: 6px;                /* badges, code chips */
+  --r: 8px;                   /* inputs, selects, small controls */
+  --r-lg: 12px;               /* cards */
+  /* The pill is the brand signature: every button and every status badge.
+     Softening these back to a rounded rectangle is the one change that would
+     stop this reading as MongoDB at all. */
+  --r-pill: 999px;
+  /* 44px: the minimum comfortable touch target, and the reason every control
+     in this file shares one height token rather than picking its own. It is
+     also the height MongoDB's own form inputs render at. */
+  --control-h: 44px;
+
+  --shadow-sm: 0 1px 2px rgba(0, 12, 18, .45);
+  --shadow: 0 4px 12px rgba(0, 12, 18, .55);
+  --shadow-lg: 0 16px 48px -8px rgba(0, 12, 18, .65);
+  /* Ambient green bleeding through the teal, not a drop shadow. Only on the
+     accent, and only where it earns hierarchy. */
+  --glow: 0 0 22px rgba(0, 237, 100, .26);
+  --glow-soft: 0 0 18px rgba(0, 237, 100, .13);
+  --card-blur: saturate(140%) blur(10px);
+  --page-wash: radial-gradient(
+      ellipse 900px 520px at 50% -12%, rgba(0, 237, 100, .05), transparent 70%);
+}
+
+/* Light: MongoDB's documentation surface - stark white canvas, cool grey
+   hairlines, deep-teal ink. The same bright green pill, pressed into paper
+   rather than glowing out of a band. Surfaces are separated by real (very
+   soft) shadows here, because on a light ground a 13%-opacity border alone
+   disappears; the ramp below is the design's own elevation scale, tinted with
+   its teal rather than neutral black. */
+:root[data-theme="light"] {
+  --bg-0: #F4F7F6;            /* surface-soft, the page behind the cards */
+  --bg-1: #FFFFFF;            /* canvas - every card */
+  --bg-2: #F9FBFA;            /* surface */
+  --bg-3: #EDF1F0;
+  --bg-4: #DCE3E2;
+
+  --line: #E1E5E8;            /* hairline */
+  --line-soft: #ECEFF1;       /* hairline-soft */
+  --line-strong: #C1CCD6;     /* hairline-strong */
+
+  --ink: #001E2B;             /* the design's ink is its deep teal */
+  --ink-2: #3D4F5B;           /* slate */
+  --muted: #5C6C7A;           /* steel - NOT stone: #7C8C9A is 3.4:1 on white */
+
+  /* Status colours darkened for contrast against white. The dark theme's
+     #FF6B6B red is 2.6:1 on paper - readable on teal, not here. */
+  --green: #00684A;           /* brand-green-dark: ~7:1 */
+  --green-dim: #00523A;
+  --amber: #946F3F;           /* the design's own warning text colour */
+  --amber-dim: #7A5A32;
+  --red: #B3261E;
+  --red-dim: #8C1D18;
+  --blue: #3D4F9F;            /* accent-blue, as published */
+  --blue-dim: #2E3C7A;
+  --violet: #6B2FD6;
+
+  /* The pill stays bright green on both themes - it is the brand signature and
+     #001E2B on #00ED64 is ~11:1. What cannot follow it is green AS TEXT:
+     #00ED64 on white is about 1.6:1, so --accent-text drops to the dark brand
+     green, which is what MongoDB uses for links and active tabs. */
+  --accent: #00ED64;
+  --accent-ink: #001E2B;
+  --accent-text: #00684A;     /* brand-green-dark on paper: ~7:1 */
+  --accent-dim: #00B545;
+  --accent-soft: rgba(0, 237, 100, .18);   /* resolves to their mint #E3FCEF */
+  /* A mark drawn ON the accent fill - the count inside a selected segment.
+     The accent's own ink at low alpha, as a token rather than an rgba() spelled
+     out at the one place it is used, which is how a second palette starts. */
+  --on-accent-soft: rgba(0, 30, 43, .16);
+  --accent-line: rgba(0, 104, 74, .34);
+
+  /* Lighter tints and darker edges than the dark theme's: a 14% fill that
+     reads as a wash on teal reads as a stain on white paper. The amber is the
+     design's own warning surface (#FFF8E0) expressed as a tint, so it lands on
+     that colour over the card and stays honest over the page behind it. */
+  --tint-green: rgba(0, 104, 74, .09);
+  --edge-green: rgba(0, 104, 74, .30);
+  --tint-amber: rgba(255, 196, 61, .18);
+  --edge-amber: rgba(148, 111, 63, .32);
+  --tint-red: rgba(179, 38, 30, .08);
+  --edge-red: rgba(179, 38, 30, .28);
+  --tint-blue: rgba(61, 79, 159, .09);
+  --edge-blue: rgba(61, 79, 159, .28);
+
+  --shadow-sm: 0 1px 2px rgba(0, 30, 43, .04);
+  --shadow: 0 4px 12px rgba(0, 30, 43, .08);
+  --shadow-lg: 0 16px 48px -8px rgba(0, 30, 43, .16);
+  --glow: 0 0 20px rgba(0, 237, 100, .35);
+  --glow-soft: 0 0 16px rgba(0, 237, 100, .20);
+  --card-blur: saturate(120%) blur(8px);
+  --page-wash: radial-gradient(
+      ellipse 900px 520px at 50% -12%, rgba(0, 237, 100, .09), transparent 70%);
+}
+
+/* Instant theme switching without transition flicker or strobe */
+.theme-transitioning,
+.theme-transitioning * {
+  transition: none !important;
+}
+
+/* Instant view activation to eliminate tab flash on reload */
+html[data-initial-view="runs"] #view-overview,
+html[data-initial-view="corpus"] #view-overview,
+html[data-initial-view="engineering"] #view-overview,
+html[data-initial-view="sovereignty"] #view-overview,
+html[data-initial-view="router"] #view-overview {
+  display: none !important;
+}
+html[data-initial-view="runs"] #view-runs,
+html[data-initial-view="corpus"] #view-corpus,
+html[data-initial-view="engineering"] #view-engineering,
+html[data-initial-view="sovereignty"] #view-sovereignty,
+html[data-initial-view="router"] #view-router {
+  display: block !important;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  background-color: var(--bg-0);
+}
+
+body {
+  margin: 0;
+  /* A single, very low-opacity warm wash at the top of the page. Fixed, so it
+     does not travel with the scroll and become a moving light. This is the
+     whole of the "atmosphere" - one gradient, not a field of orbs that would
+     cost a repaint on every scroll of a table with 500 audit rows. */
+  background: var(--page-wash), var(--bg-0);
+  background-attachment: fixed;
+  color: var(--ink);
+  font: 14px/1.55 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Pure 2D flat solid backdrop in dark mode - no mesh/radial gradients */
+:root[data-theme="dark"] body {
+  background: var(--bg-0);
+}
+
+/* Polished floating scrollbars that never hide data */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 3px 0;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-4);
+  border-radius: var(--r-sm);
+  border: 1px solid var(--bg-1);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+/* ================================================================== shell */
+
+.shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: 56px 1fr;
+  grid-template-areas: "brand top" "nav main";
+  height: 100vh;
+  overflow: hidden;
+}
+
+.brandbox {
+  grid-area: brand;
+  display: flex; align-items: center; gap: 11px;
+  padding: 0 18px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-1);
+}
+.brand-mark {
+  width: 28px; height: 28px; border-radius: var(--r); flex: none;
+  background: var(--accent);
+  display: grid; place-items: center;
+  font: 800 14px/1 var(--display); color: var(--accent-ink);
+  box-shadow: var(--glow-soft);
+}
+.brand-name { font: 700 14.5px/1.1 var(--display); letter-spacing: .2px; color: var(--ink); }
+.brand-sub  { font: 9.5px/1 var(--mono); color: var(--muted); letter-spacing: .9px; margin-top: 2px; }
+
+.topbar {
+  grid-area: top;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-1);
+  /* The bar is ONE line that never grows the page.
+     Without this it pushed the document wider than the viewport, and every
+     panel below inherited a horizontal scrollbar it had no reason to have -
+     the cards looked broken when the real fault was up here. Status chips are
+     allowed to disappear from the right; they are all repeated inside the
+     panels they describe. */
+  overflow: hidden;
+  min-width: 0;
+}
+.topbar .spacer { flex: 1; min-width: 8px; }
+.topbar > .chip { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+/* Borders used to do the separating. Without them two status chips 10px apart
+   read as one run-on phrase ("profile MID backend mock"), so adjacent facts
+   get the space the edge used to occupy. */
+.topbar > .chip + .chip { margin-left: 6px; }
+
+/* Least-to-most important, dropped in that order as the window narrows. */
+@media (max-width: 1500px) { #chip-uptime { display: none; } }
+@media (max-width: 1320px) { #chip-vram { display: none; } }
+@media (max-width: 1160px) { #chip-profile { display: none; } }
+@media (max-width: 980px) {
+  .rolepick span { display: none; }
+  #chip-backend { display: none; }
+}
+
+.nav {
+  grid-area: nav;
+  border-right: 1px solid var(--line);
+  background: var(--bg-1);
+  padding: 14px 12px;
+  overflow-y: auto;
+}
+/* A group heading now carries a sentence rather than one word, so it wraps and
+   needs a line height - at `line-height: 1` a second line collides with the
+   first. The tracking drops with it: 1.4px of letter-spacing is right for
+   "WORK" and unreadable across six. */
+.nav-label {
+  font: 700 10px/1.45 var(--mono); letter-spacing: .9px;
+  color: var(--muted); text-transform: uppercase;
+  padding: 16px 10px 8px;
+}
+
+/* The problem statement, at the foot of the menu. It is the one place in the
+   UI that says what this box is FOR, and it belongs beside the two headings
+   that were named after it rather than in a dialog nobody opens. Static text:
+   there is nothing to link to on an air-gapped machine, so the statement is
+   carried rather than pointed at. */
+.nav-ps {
+  margin-top: 22px;
+  padding: 14px 10px 4px;
+  border-top: 1px solid var(--line-soft);
+  font: 10.5px/1.55 var(--mono);
+  color: var(--muted);
+}
+.nav-ps b {
+  display: block;
+  margin-bottom: 6px;
+  font: 700 10px/1 var(--mono); letter-spacing: .9px;
+  color: var(--accent-text);
+}
+.nav-item {
+  display: flex; align-items: center; justify-content: flex-start; gap: 10px;
+  width: 100%; text-align: left;
+  min-height: 40px;
+  padding: 10px 12px; margin-bottom: 2px;
+  border: 0; border-radius: var(--r);
+  background: transparent; color: var(--ink-2);
+  font: 500 13px/1.2 var(--sans); cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+  box-sizing: border-box;
+}
+.nav-item:hover {
+  background: var(--bg-2);
+  color: var(--ink);
+}
+/* One marker for the current page: a bar on the leading edge, and the text in
+   full ink. The previous version had a tinted background AND a coloured border
+   AND the bar - three signals for one fact, which is what made the menu look
+   like every item was competing. */
+/* A square bar against a rounded pill showed as a curved amber sliver that
+   read as a rendering fault. The marker is a real left border now, and the
+   left corners are square so the bar and the card edge agree. */
+.nav-item.active {
+  background: var(--bg-2);
+  color: var(--ink);
+  font-weight: 600;
+  border-left: 3px solid var(--accent);
+  padding-left: 9px;
+  border-radius: 0 var(--r) var(--r) 0;
+}
+.nav-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+.nav-item.active .nav-layer {
+  color: var(--accent-text);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+/* The architecture's layer name, on the page that owns it rather than in the
+   menu. Someone who wants to map the UI to the design document can; nobody
+   else has to read "L5" to find the button that runs a task. */
+.layer-tag {
+  font: 10px/1 var(--mono); letter-spacing: .6px;
+  color: var(--muted);
+  padding: 4px 0;
+  text-transform: uppercase;
+}
+.nav-layer {
+  margin-left: auto; flex: none;
+  font: 9.5px/1 var(--mono); letter-spacing: .5px;
+  color: var(--muted); border: 1px solid var(--line);
+  padding: 3px 5px; border-radius: var(--r-sm);
+}
+.nav-flag {
+  margin-left: auto; flex: none;
+  font: 9.5px/1 var(--mono); font-weight: 700;
+  background: var(--amber-dim); color: #ffffff;
+  padding: 3px 7px; border-radius: var(--r-pill);
+}
+
+.main {
+  grid-area: main;
+  overflow-y: auto;
+  padding: 28px 36px 64px;
+  background: var(--bg-0);
+}
+
+@media (max-width: 900px) {
+  .shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: 56px 56px 1fr;
+    grid-template-areas: "brand" "top" "main";
+  }
+  /* Closed by default here, and opened over the content by the same
+     hamburger. Anchored below the two stacked bars so it never covers the
+     control that opened it. */
+  .nav {
+    position: fixed; top: 112px; left: 0; bottom: 0; width: 250px;
+    z-index: 40; border-right: 1px solid var(--line);
+    background: var(--bg-1); box-shadow: var(--shadow-lg);
+  }
+  .shell.nav-closed .nav { display: none; }
+  .main { padding: 20px 18px 56px; }
+}
+
+/* ================================================================ chrome */
+
+/* ONE GRAMMAR: a bordered, filled box is something you press. Everything else
+   is text.
+
+   A `span.chip` and a `button.chip` used to render identically - same border,
+   same fill, same radius - so "reads everything, incl. RESTRICTED", which is a
+   read-only note beside the role picker, looked exactly like a control. The
+   only thing separating the two was a hover state, which does not exist on a
+   touchscreen and cannot be seen on a projector. A reader who tries a label and
+   gets nothing learns that this page's buttons sometimes do nothing, and that
+   doubt then applies to the real ones.
+
+   So the static chip is plain text: the label muted, the VALUE in ink, and no
+   box at all. Sizing and spacing are unchanged, so the topbar still drops its
+   chips right-to-left as the window narrows. */
+.chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  font: 11px/1 var(--mono);
+  /* The vertical padding is what the bordered version had, so nothing in the
+     bar shifts; the horizontal padding goes, because there is no longer an
+     edge for text to sit away from. */
+  padding: 6px 0;
+  border: 0; background: none; color: var(--muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.chip b { color: var(--ink); font-weight: 600; }
+/* A chip that IS a button keeps the whole control treatment, and states every
+   part of it rather than inheriting: the rule above deliberately has nothing
+   left to inherit. */
+button.chip {
+  height: 32px; padding: 0 14px;
+  font: 11px/1 var(--mono); font-weight: 500;
+  background: var(--bg-2); color: var(--ink-2);
+  border: 1px solid var(--line); border-radius: var(--r-pill);
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+button.chip:hover:not(:disabled) {
+  background: var(--bg-3); color: var(--ink);
+  border-color: var(--line-strong); box-shadow: none; filter: none;
+}
+
+#theme-toggle {
+  cursor: pointer;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-weight: 600;
+  border-radius: var(--r-sm);
+}
+#theme-toggle:hover {
+  background: var(--bg-3);
+  border-color: var(--accent-line);
+}
+
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.ok { background: var(--green); }
+.dot.warn { background: var(--amber); }
+.dot.bad { background: var(--red); }
+.dot.live { animation: pulse 1.8s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+
+/* ======================================= form controls & inside buttons */
+
+input[type=text], input[type=search], select {
+  height: var(--control-h);
+  background: var(--bg-2); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--r);
+  padding: 0 14px; font: 13.5px/1 var(--sans);
+  transition: border-color .18s ease-out, background .18s ease-out,
+              box-shadow .18s ease-out;
+  box-sizing: border-box;
+}
+input[type=text]:hover:not(:focus), select:hover:not(:focus) {
+  border-color: var(--line-strong);
+}
+/* One focus treatment for every control on the page, in the accent colour.
+   A ring plus a border change plus a faint glow: three cues, so the focused
+   element is findable at a glance on a projector as well as a laptop. */
+input[type=text]:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+  background: var(--bg-1);
+  box-shadow: var(--glow-soft);
+}
+input::placeholder { color: var(--muted); }
+
+/* File upload control */
+input[type=file] {
+  height: var(--control-h);
+  font: 12.5px var(--sans);
+  color: var(--ink-2);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+input[type=file]::file-selector-button {
+  height: 28px;
+  padding: 0 12px;
+  background: var(--bg-3);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  font: 600 12px/28px var(--sans);
+  cursor: pointer;
+  margin-right: 12px;
+  transition: background .12s, border-color .12s;
+}
+input[type=file]::file-selector-button:hover {
+  background: var(--bg-4);
+  border-color: var(--accent);
+}
+input[type=file]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--control-h);
+  padding: 0 18px;
+  background: var(--accent); color: var(--accent-ink);
+  border: 1px solid var(--accent-dim);
+  /* The pill, on every button without exception - the one shape this design
+     is recognised by. */
+  border-radius: var(--r-pill);
+  font: 600 13px/1 var(--sans); cursor: pointer;
+  letter-spacing: .2px; white-space: nowrap;
+  transition: background .2s ease-out, box-shadow .2s ease-out,
+              transform .12s ease-out, border-color .2s ease-out,
+              filter .2s ease-out;
+  box-sizing: border-box;
+}
+/* Minimal hover: the fill darkens by one step and nothing moves. The amber
+   glow that was here fired on every button the pointer crossed, which made a
+   toolbar look like it was being scanned by something. A glow that is on
+   everything is not an accent. */
+button:hover:not(:disabled) {
+  background: var(--accent-dim);
+  border-color: var(--accent-dim);
+}
+/* A press you can feel. 2% is enough to register and small enough that a row
+   of buttons does not jump. */
+button:active:not(:disabled) { transform: scale(.98); }
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.ghost {
+  background: var(--bg-2); color: var(--ink); border: 1px solid var(--line);
+}
+button.ghost:hover:not(:disabled) {
+  background: var(--bg-3); border-color: var(--line-strong);
+}
+button.tiny { height: 30px; padding: 0 14px; font-size: 11.5px; border-radius: var(--r-pill); }
+button.danger { background: var(--red-dim); color: #ffffff; border: 1px solid var(--red-dim); }
+button.danger:hover:not(:disabled) { background: var(--red); }
+button.danger:focus-visible { outline-color: var(--red); }
+
+/* Anything else focusable gets the same ring, so nothing on the page can be
+   tabbed to invisibly. */
+a:focus-visible, summary:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+.inline {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+form.inline {
+  margin-bottom: 6px;
+}
+.inline .grow { flex: 1 1 280px; min-width: 0; }
+
+/* Custom Checkbox */
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--control-h);
+  padding: 0 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+  user-select: none;
+  border-radius: var(--r-sm);
+}
+.check:hover { color: var(--ink); }
+.check input[type=checkbox] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid var(--line);
+  border-radius: 4px;
+  background: var(--bg-2);
+  cursor: pointer;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  transition: all .15s ease;
+}
+.check input[type=checkbox]:checked {
+  background: var(--blue-dim);
+  border-color: var(--blue-dim);
+}
+.check input[type=checkbox]:checked::after {
+  content: "";
+  width: 5px;
+  height: 9px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) translate(-0.5px, -1px);
+}
+
+/* Suggestion pills container and chips - generous clearance prevents any overlap */
+.suggest-row,
+.inline.tiny.muted {
+  display: flex;
+  align-items: center;
+  gap: 8px 10px;
+  flex-wrap: wrap;
+  margin-top: 14px !important;
+  margin-bottom: 10px;
+  padding: 2px 0;
+  clear: both;
+}
+.suggest-label {
+  font: 600 11.5px/1.2 var(--mono);
+  color: var(--blue);
+  letter-spacing: .5px;
+  margin-right: 4px;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+}
+.suggest-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+  background: var(--bg-2);
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+  font: 500 12px/1 var(--sans);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .12s, color .12s, border-color .12s;
+  margin: 2px 0;
+  flex-shrink: 0;
+}
+.suggest-chip:hover {
+  background: var(--bg-3);
+  color: var(--ink);
+  border-color: var(--accent-line);
+}
+.suggest-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.suggest-chip:active {
+  background: var(--bg-4);
+}
+
+/* =============================================================== banner */
+
+.honesty {
+  border: 1px solid var(--edge-amber);
+  background: var(--tint-amber);
+  border-radius: var(--r);
+  padding: 14px 18px; margin-bottom: 24px;
+}
+.honesty-head {
+  display: flex; align-items: center; gap: 9px;
+  font: 700 11px/1 var(--mono); letter-spacing: 1.5px;
+  color: var(--amber); margin-bottom: 10px;
+}
+.honesty ul { margin: 0; padding-left: 18px; }
+.honesty li { color: var(--ink-2); font-size: 13px; margin: 5px 0; }
+.honesty li b { color: var(--amber); }
+
+/* ============================================ cards & layout spacing */
+
+/* Guaranteed 24px separation between every top-level card and row.
+   Never allows cards to touch or overlap each other. */
+.view > .card,
+.view > .row {
+  margin-bottom: 24px;
+}
+.view > .card:last-child,
+.view > .row:last-child {
+  margin-bottom: 0;
+}
+
+.row {
+  display: grid;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.row.c2 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+.row.c3 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.row.c4 { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.row.split { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: stretch; }
+.row.split-r { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); align-items: stretch; }
+
+@media (max-width: 1200px) {
+  .row.c4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .row.c3, .row.split, .row.split-r { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .row.c2, .row.c4 { grid-template-columns: 1fr; }
+}
+
+.card {
+  /* Glass: the card sits ON the page wash rather than hiding it. In light mode
+     the same rule reads as plain white with a soft shadow, which is what a
+     light theme wants - one rule, two intentional results. */
+  background: color-mix(in srgb, var(--bg-1) 88%, transparent);
+  -webkit-backdrop-filter: var(--card-blur);
+  backdrop-filter: var(--card-blur);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 20px 22px 22px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  transition: border-color .3s ease-out, box-shadow .3s ease-out;
+}
+/* No transform on hover: these are data panels being read, not cards being
+   browsed, and a table that lifts under the cursor is a table that is harder
+   to read a row of. The border brightening is the whole feedback. */
+.card:hover { border-color: var(--line-strong); }
+
+/* A card whose subject is the current focus of the page. */
+.card.accent {
+  border-color: var(--accent-line);
+  box-shadow: var(--glow-soft), var(--shadow-sm);
+}
+
+/* A browser without color-mix still gets a solid card rather than a
+   transparent one - checked because Safari 15 and older Edge are exactly the
+   kind of browser a venue machine turns out to have. */
+@supports not (background: color-mix(in srgb, red 50%, transparent)) {
+  .card { background: var(--bg-1); }
+}
+.card.flush { padding: 0; overflow: hidden; }
+.card-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 15px;
+}
+.card-title { font: 600 14px/1.2 var(--display); letter-spacing: -.01em; color: var(--ink); }
+.card-sub { font: 11px var(--mono); color: var(--muted); }
+.card-head .spacer { flex: 1; }
+.card-head button:not(.tiny) {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 12.5px;
+}
+
+/* Subtle view transition without zero-opacity flicker */
+.view { animation: viewEnter 0.12s ease-out; }
+@keyframes viewEnter {
+  from { opacity: 0.85; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+h2.view-title {
+  margin: 0 0 6px; font: 700 21px/1.2 var(--display); letter-spacing: -.02em;
+  display: flex; align-items: center; gap: 10px;
+  color: var(--ink);
+}
+p.view-lede {
+  margin: 0 0 24px; color: var(--ink-2); font-size: 13.5px;
+  max-width: 78ch; line-height: 1.5;
+}
+
+h3.sec {
+  margin: 24px 0 12px;
+  font: 700 10.5px/1 var(--mono); letter-spacing: 1.4px;
+  color: var(--muted); text-transform: uppercase;
+}
+
+/* ================================================================ stats */
+
+.stat { display: flex; flex-direction: column; gap: 4px; }
+.stat-value {
+  font: 700 32px/1.05 var(--mono);
+  letter-spacing: -1px; color: var(--ink);
+  transition: color .2s;
+}
+.stat-value.good { color: var(--green); }
+.stat-value.warn { color: var(--amber); }
+.stat-value.bad  { color: var(--red); }
+.stat-label { font-size: 12px; color: var(--muted); font-weight: 500; }
+.stat-note { font: 10.5px var(--mono); color: var(--muted); margin-top: 6px; }
+
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 8px 18px; margin: 0; }
+.kv dt { color: var(--muted); font-size: 12.5px; }
+.kv dd { margin: 0; font-size: 12.5px; text-align: right; color: var(--ink); font-weight: 500; }
+
+.mono { font-family: var(--mono); font-size: 11.5px; }
+.muted { color: var(--muted); }
+.dim { color: var(--ink-2); }
+.ok { color: var(--green); } .warn { color: var(--amber); } .bad { color: var(--red); }
+.tiny { font-size: 11px; }
+.center { text-align: center; }
+
+/* =============================================================== badges */
+
+/* A badge is a verdict, never a control - no badge on this page is clickable.
+   The border goes and the tint stays: the fill is what makes it a tag at a
+   glance, the edge is what made it look pressable. `transparent` rather than
+   `none` so the coloured variants below, which DO set a border-colour to carry
+   their meaning, keep exactly the same size as a neutral one. */
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font: 10.5px/1 var(--mono); letter-spacing: .4px;
+  padding: 4px 10px; border-radius: var(--r-pill);
+  background: var(--bg-2); border: 1px solid transparent; color: var(--ink-2);
+  white-space: nowrap; font-weight: 500;
+}
+.badge.good {
+  color: var(--green);
+  border-color: var(--edge-green);
+  background: var(--tint-green);
+}
+.badge.warn {
+  color: var(--amber);
+  border-color: var(--edge-amber);
+  background: var(--tint-amber);
+}
+.badge.bad {
+  color: var(--red);
+  border-color: var(--edge-red);
+  background: var(--tint-red);
+}
+.badge.blue {
+  color: var(--blue);
+  border-color: var(--edge-blue);
+  background: var(--tint-blue);
+}
+.badge.solid { background: var(--blue); color: var(--bg-0); border-color: transparent; }
+.badge.accent {
+  color: var(--accent-text);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+}
+
+/* ============================================ scrollable tables & lists */
+
+/* scrollbar-gutter reserves space so scrollbars NEVER overlap behind data */
+.scroll {
+  max-height: 340px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 14px;
+  scrollbar-gutter: stable;
+}
+.scroll.short { max-height: 220px; }
+
+table.grid { width: 100%; border-collapse: collapse; }
+table.grid th {
+  text-align: left; padding: 10px 12px;
+  font: 700 10px/1 var(--mono); letter-spacing: 1.1px; text-transform: uppercase;
+  color: var(--muted); border-bottom: 1px solid var(--line);
+  /* Opaque on purpose: a translucent sticky header lets the rows scrolling
+     beneath it show through, and the column names stop being readable
+     exactly when the table is long enough to need them. */
+  position: sticky; top: 0; background: var(--bg-2); z-index: 1;
+}
+table.grid td {
+  padding: 10px 12px; font-size: 12.5px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink);
+}
+table.grid th:last-child,
+table.grid td:last-child {
+  padding-right: 18px; /* Clearance from scrollbar */
+}
+table.grid tr:last-child td { border-bottom: 0; }
+table.grid tr.hl td { background: var(--accent-soft); }
+table.grid td.num, table.grid th.num { text-align: right; font-family: var(--mono); }
+
+ul.plain { list-style: none; margin: 0; padding: 0; }
+ul.plain > li {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 0; border-bottom: 1px solid var(--line-soft);
+  font-size: 12.5px; min-width: 0;
+}
+ul.plain > li:last-child { border-bottom: 0; }
+.ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            flex: 1 1 auto; min-width: 0; }
+
+/* Logline in Live Tail */
+.logline {
+  display: flex; gap: 14px; align-items: center;
+  padding: 8px 12px 8px 6px; font: 11.5px var(--mono);
+  border-bottom: 1px solid var(--line-soft);
+  animation: slidein .2s ease-out;
+}
+@keyframes slidein { from { opacity: 0; transform: translateY(-2px); } }
+.logline .seq { color: var(--muted); width: 44px; flex: none; font-weight: 600; }
+.logline .ellipsis { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.logline .badge { flex: none; }
+.logline .sha {
+  flex: none; font-family: var(--mono); color: var(--muted);
+  width: 72px; text-align: right;
+  margin-right: 8px; /* Protected clearance from scrollbar */
+}
+
+/* ================================================================ steps */
+
+.timeline {
+  position: relative; margin: 0; padding: 0; list-style: none;
+  flex: 1; min-height: 280px;
+}
+.timeline::before {
+  content: ""; position: absolute; left: 11px; top: 10px; bottom: 10px;
+  width: 2px; background: var(--line);
+}
+.step { position: relative; padding: 0 0 16px 36px; }
+.step-node {
+  position: absolute; left: 2px; top: 2px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--bg-1); border: 2px solid var(--line);
+  display: grid; place-items: center;
+  font: 700 9.5px/1 var(--mono); color: var(--muted);
+}
+.step.passed .step-node { border-color: var(--green); color: var(--green); }
+.step.failed .step-node { border-color: var(--red); color: var(--red); }
+.step.running .step-node {
+  border-color: var(--blue); color: var(--blue);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.step.awaiting_approval .step-node { border-color: var(--amber); color: var(--amber); }
+
+.step-head { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.step-intent { font-size: 13.5px; font-weight: 500; flex: 1 1 220px; min-width: 0; color: var(--ink); }
+.step-accept {
+  margin-top: 5px; font: 11px var(--mono); color: var(--muted);
+}
+.step-accept b { color: var(--ink-2); font-weight: 600; }
+.step-out {
+  margin-top: 8px; padding: 10px 12px;
+  background: var(--bg-0); border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm); font: 11.5px var(--mono);
+  white-space: pre-wrap; color: var(--ink-2);
+  max-height: 150px; overflow: auto;
+}
+
+/* =============================================================== charts */
+
+.chart { display: block; width: 100%; overflow: visible; }
+.chart text { font-family: var(--mono); fill: var(--muted); }
+.donut-value { font: 700 22px var(--mono); fill: var(--ink); }
+.donut-label { font: 10.5px var(--mono); fill: var(--muted); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 14px; }
+.legend-item { display: flex; align-items: center; gap: 7px;
+               font: 11.5px var(--mono); color: var(--ink-2); }
+.legend-swatch { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+.bar-row { display: grid; grid-template-columns: 140px 1fr 64px;
+           gap: 12px; align-items: center; padding: 5px 0; }
+.bar-row .name { font: 11.5px var(--mono); overflow: hidden;
+                 text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.bar-row .val { font: 11.5px var(--mono); text-align: right; color: var(--ink-2); }
+.bar-track { height: 9px; background: var(--bg-0); border-radius: 3px;
+             overflow: hidden; border: 1px solid var(--line-soft); }
+.bar-fill { height: 100%; border-radius: 3px; transition: width .35s ease; }
+
+/* ============================================================== answers */
+
+.answer {
+  padding: 14px 16px; border-radius: var(--r);
+  background: var(--bg-2); border: 1px solid var(--line);
+  font-size: 13.5px; line-height: 1.65; white-space: pre-wrap;
+  color: var(--ink);
+}
+.answer.rejected { border-color: var(--edge-red); color: var(--ink-2); }
+.cite {
+  color: var(--blue); background: var(--tint-blue);
+  border-radius: 3px; padding: 2px 5px;
+  font: 11px var(--mono); white-space: nowrap; font-weight: 500;
+}
+.notice {
+  padding: 11px 14px; border-radius: var(--r-sm); font-size: 13px;
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--ink-2);
+}
+.notice.good {
+  border-color: var(--edge-green); background: var(--tint-green);
+  color: var(--green);
+}
+.notice.warn {
+  border-color: var(--edge-amber); background: var(--tint-amber);
+  color: var(--amber);
+}
+.notice.bad {
+  border-color: var(--edge-red); background: var(--tint-red);
+  color: var(--red);
+}
+
+/* =========================================================== chain viz */
+
+.chain { display: flex; align-items: center; gap: 0; overflow-x: auto; padding: 6px 0; }
+.chain-block {
+  flex: none; padding: 7px 9px; border-radius: var(--r-sm);
+  background: var(--bg-2); border: 1px solid var(--line);
+  font: 10px var(--mono); color: var(--ink-2); text-align: center;
+}
+.chain-block.head {
+  border-color: var(--green); color: var(--green);
+  background: var(--tint-green); font-weight: 700;
+}
+.chain-link { flex: none; width: 14px; height: 2px; background: var(--line); }
+
+.empty { padding: 32px 14px; text-align: center; color: var(--muted); font-size: 13px; }
+.skeleton {
+  background: var(--bg-2);
+  animation: pulse 1.4s ease-in-out infinite;
+  border-radius: var(--r-sm); color: transparent;
+}
+
+.hide { display: none !important; }
+.foot { padding: 26px 4px 10px; color: var(--muted); font-size: 11.5px; }
+
+/* ============================================ honesty chip, modal, toasts */
+
+.honesty-chip {
+  border-color: var(--amber);
+  color: var(--amber);
+  cursor: pointer;
+  font: inherit;
+  background: var(--tint-amber);
+}
+.honesty-chip:hover:not(:disabled) { background: var(--tint-amber); }
+.dot.warn { background: var(--amber); }
+
+.modal {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--bg-1);
+  color: var(--ink);
+  max-width: 740px;
+  padding: 22px 24px;
+}
+.modal::backdrop { background: rgba(0, 0, 0, .5); }
+.modal ul { margin: 12px 0 0; padding-left: 20px; }
+.modal li { margin: 8px 0; line-height: 1.5; font-size: 13px; color: var(--ink-2); }
+
+.toasts {
+  position: fixed; right: 20px; bottom: 20px;
+  display: flex; flex-direction: column; gap: 10px;
+  z-index: 50; max-width: 420px;
+}
+.toast {
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: var(--r-sm);
+  background: var(--bg-1);
+  color: var(--ink);
+  padding: 12px 14px; font-size: 13px; line-height: 1.45;
+  animation: slidein .18s ease-out;
+}
+.toast.bad { border-left-color: var(--red); }
+.toast.good { border-left-color: var(--green); }
+.toast.warn { border-left-color: var(--amber); }
+
+/* ======================================================= mode / output tabs */
+
+/* Every colour below is a token, so both themes follow from the same rules.
+   A control that only reads correctly in dark mode is a control nobody can see
+   on the conference-room projector, which is where this gets demonstrated. */
+
+.mode-row {
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap; margin-bottom: 12px;
+}
+.mode-label {
+  font: 600 11px/1 var(--mono); color: var(--muted);
+  letter-spacing: .6px; text-transform: uppercase;
+}
+
+.segmented {
+  display: inline-flex; align-items: stretch;
+  border: 1px solid var(--line); border-radius: var(--r-pill);
+  background: var(--bg-2); overflow: hidden;
+}
+.segmented .seg {
+  appearance: none; border: 0; background: transparent;
+  color: var(--ink-2); cursor: pointer;
+  font: 500 12px/1 var(--sans);
+  padding: 0 14px; height: 34px;
+  display: inline-flex; align-items: center; gap: 6px;
+  border-right: 1px solid var(--line);
+}
+.segmented .seg:last-child { border-right: 0; }
+.segmented .seg:hover { background: var(--bg-3); color: var(--ink); }
+.segmented .seg:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: -2px;
+}
+/* The selected segment is marked by BOTH a fill and a weight change. Colour
+   alone is the one distinction a projector, a colour-blind reader, or a
+   screenshot in a report can all lose at once. */
+.segmented .seg.active {
+  background: var(--accent); color: var(--accent-ink); font-weight: 600;
+}
+.segmented .seg b {
+  font: 600 11px/1 var(--mono);
+  padding: 2px 5px; border-radius: 3px;
+  background: var(--bg-4); color: var(--ink-2);
+}
+.segmented .seg.active b { background: var(--on-accent-soft); color: var(--accent-ink); }
+
+.out-item {
+  border: 1px solid var(--line-soft); border-radius: var(--r);
+  background: var(--bg-0); padding: 12px 14px; margin-bottom: 12px;
+}
+.out-item:last-child { margin-bottom: 0; }
+.out-head { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.out-head .spacer { flex: 1; }
+.out-name {
+  font-size: 13px; font-weight: 500; color: var(--ink);
+  min-width: 0; overflow-wrap: anywhere;
+}
+a.out-name { color: var(--accent-text); text-decoration: none; }
+
+/* Every link in a panel, not just the ones in the Output card. The default
+   browser blue is near-unreadable on the dark surfaces and merely out of
+   place on the light ones. */
+#artifacts a, ul.plain a, .card a:not(.out-name) {
+  color: var(--accent-text);
+  text-decoration: none;
+}
+#artifacts a:hover, ul.plain a:hover, .card a:not(.out-name):hover {
+  text-decoration: underline;
+}
+a.out-name:hover { text-decoration: underline; }
+
+h4.sec {
+  margin: 12px 0 6px; font: 600 10.5px/1 var(--mono);
+  letter-spacing: .7px; text-transform: uppercase; color: var(--muted);
+}
+
+/* Source and previews scroll inside their own box rather than stretching the
+   card: a 400-line program must not push the next deliverable off the screen. */
+pre.code, pre.doc-preview {
+  margin: 10px 0 0; padding: 12px 14px;
+  background: var(--bg-1); border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+  font: 11.5px/1.55 var(--mono); color: var(--ink-2);
+  white-space: pre-wrap; overflow-wrap: anywhere;
+  max-height: 380px; overflow: auto;
+}
+pre.code { color: var(--ink); }
+pre.out-stdout { max-height: 220px; color: var(--ink-2); }
+pre.doc-preview { font-family: var(--sans); font-size: 12.5px; }
+
+/* ==================================================== audit / activity console */
+
+/* A security console, not a feed. Dense monospaced rows, one per audit record,
+   scannable down any single column - which is how these are actually read:
+   "show me every DENIED", not "read every line". */
+
+.scroll.tall { max-height: 480px; }
+
+table.grid.console td {
+  padding: 8px 12px;
+  font: 11.5px/1.5 var(--mono);
+  vertical-align: top;
+}
+table.grid.console th { font-size: 9.5px; }
+table.grid.console .col-seq { width: 52px; }
+table.grid.console .col-time { width: 92px; white-space: nowrap; }
+
+.console-row { cursor: pointer; transition: background .12s ease-out; }
+.console-row:hover td { background: var(--bg-2); }
+.console-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+/* An event the projection has no mapping for. Marked on the row as well as in
+   the banner, because the row is where someone will be looking when they
+   notice the operation column is just an event name. */
+.console-row.unmapped td { background: var(--accent-soft); }
+
+.op { color: var(--ink); font-weight: 500; }
+.op-target {
+  margin-left: 8px; color: var(--accent-text);
+  overflow-wrap: anywhere;
+}
+.label-cell { color: var(--ink-2); letter-spacing: .3px; }
+
+/* The role the policy engine evaluated against, distinguished from the actor
+   next to it - they are different things and a reader must not merge them. */
+/* Printed facts, both of them - the role a row was recorded under, and the
+   KVC-ARCH-001 layer a page belongs to. Neither does anything when clicked, so
+   neither wears an edge. */
+.role-tag {
+  margin-left: 8px; padding: 2px 0;
+  font: 10px/1.4 var(--mono); letter-spacing: .3px;
+  color: var(--ink-2);
+}
+
+/* GLYPH + WORD + colour, in that order of reliability. The glyph and the word
+   survive a projector, a greyscale print and a colour-blind reader; the tint
+   is the third cue, never the only one. */
+.verdict {
+  display: inline-flex; align-items: center; gap: 6px;
+  font: 600 10.5px/1 var(--mono); letter-spacing: .5px;
+  padding: 4px 10px; border-radius: var(--r-pill);
+  border: 1px solid var(--line); background: var(--bg-2); color: var(--ink-2);
+  white-space: nowrap;
+}
+/* The glyph INHERITS the verdict's colour and is outlined in it.
+   `background: currentColor` with `color` set on the same rule paints the box
+   and the character the same colour, because currentColor resolves against
+   this element's own computed color - the glyph was there and invisible,
+   which is the exact failure the glyph exists to prevent. */
+.verdict-glyph {
+  display: inline-grid; place-items: center;
+  width: 15px; height: 15px; border-radius: 3px;
+  border: 1px solid currentColor;
+  font-size: 9.5px; font-weight: 700; line-height: 1;
+}
+.verdict.good { color: var(--green); border-color: var(--edge-green);
+                background: var(--tint-green); }
+.verdict.warn { color: var(--amber); border-color: var(--edge-amber);
+                background: var(--tint-amber); }
+.verdict.bad  { color: var(--red);   border-color: var(--edge-red);
+                background: var(--tint-red); }
+.verdict.blue { color: var(--blue);  border-color: var(--edge-blue);
+                background: var(--tint-blue); }
+
+.console-detail td {
+  background: var(--bg-0);
+  border-bottom: 1px solid var(--line);
+  padding: 14px 16px 16px;
+}
+.console-detail .kv { margin: 0; }
+.console-detail pre.code { max-height: 260px; }
+
+/* ================================================ sidebar, roles, spacing */
+
+/* THE SIDEBAR CLOSES.
+   On a 1366x768 projector 220px of permanent menu is a sixth of the screen
+   that never changes, while the panel being demonstrated is the part that
+   needs the room. The collapse is a grid-column change, so nothing reflows
+   inside the panels. */
+.shell { transition: grid-template-columns .2s ease-out; }
+
+@media (min-width: 901px) {
+  .shell.nav-closed { grid-template-columns: 0 1fr; }
+  .shell.nav-closed .brandbox,
+  .shell.nav-closed .nav { display: none; }
+}
+
+/* The hamburger. A button, not an icon font - three rules drawn with borders,
+   so it costs no request and cannot fail to load. */
+.iconbtn {
+  width: 38px; height: 38px; padding: 0; flex: none;
+  background: var(--bg-2); color: var(--ink);
+  border: 1px solid var(--line); border-radius: var(--r-pill);
+  display: inline-grid; place-items: center; cursor: pointer;
+}
+.iconbtn:hover:not(:disabled) { background: var(--bg-3); }
+.burger, .burger::before, .burger::after {
+  display: block; width: 15px; height: 1.5px;
+  background: currentColor; border-radius: 2px;
+  transition: transform .2s ease-out, opacity .15s ease-out;
+}
+.burger { position: relative; }
+.burger::before, .burger::after { content: ""; position: absolute; left: 0; }
+.burger::before { top: -5px; }
+.burger::after { top: 5px; }
+/* OPEN: the bars fold into a cross, because the next press closes the menu.
+   CLOSED: three bars, because the next press opens it. A toggle draws its
+   action, not its state - drawing the state makes the button appear to do the
+   opposite of what it shows. */
+.nav-open-icon .burger { background: transparent; }
+.nav-open-icon .burger::before { transform: translateY(5px) rotate(45deg); }
+.nav-open-icon .burger::after { transform: translateY(-5px) rotate(-45deg); }
+
+/* Who is using the box. Not decoration: the policy engine decides what each
+   role may read, and the note next to it says so in one plain line. */
+.rolepick {
+  display: inline-flex; align-items: center; gap: 8px;
+  font: 11px/1 var(--mono); color: var(--muted); flex: none;
+}
+.rolepick select {
+  height: 34px; padding: 0 10px;
+  font: 12px/1 var(--sans); font-weight: 600;
+  border-radius: var(--r);
+}
+.role-note {
+  font-size: 11px; color: var(--ink-2);
+  max-width: 40ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+@media (max-width: 1180px) {
+  .role-note { display: none; }
+}
+
+/* ROOM TO BREATHE.
+   Cards used to stack with 16px between them and 15px under every heading,
+   which is why one panel read as a single wall. A heading needs more space
+   above it than below it, or it belongs to the block before it. */
+.row { margin-bottom: 22px; }
+.card-head { margin-bottom: 18px; padding-bottom: 2px; }
+h3.sec { margin: 28px 0 12px; }
+h4.sec { margin: 18px 0 8px; }
+.view-title { margin-bottom: 10px !important; }
+p.view-lede { margin-bottom: 30px !important; }
+
+/* Two cards in one grid cell, with the same gap as the grid itself. */
+.stack {
+  display: flex; flex-direction: column; gap: 22px;
+  min-width: 0;
+}
+.stack > .card { flex: none; }
+
+/* Key/value rows: the label and the value need a gap, not a shared line. */
+dl.kv { margin: 0; }
+ul.plain > li { padding: 11px 0; gap: 12px; }
+
+/* A card holds its content, not a reserved space for content it does not have
+   yet. The timeline reserved 280px whether or not there was a task, which read
+   as a panel that had failed to load. */
+.timeline { min-height: 0 !important; }
+#view-runs .row.split { align-items: start; }
+#run-idle { padding: 44px 14px; }
+
+/* One rule for the whole page: a row of cards lines up at the top rather than
+   stretching the shortest one to match the tallest. Stretching is right for a
+   two-column comparison and wrong for a main panel beside two small ones. */
+.row.split, .row.split-r { align-items: start; }
+
+/* ---------------------------------------------------------- control edges */
+
+/* Every control that sits on a card carries a visible edge. Fills alone stop
+   separating a control from its background the moment the two are close in
+   tone - which is most of the light theme, and all of a projector. */
+.segmented { border-color: var(--line-strong); }
+.segmented .seg.active { box-shadow: inset 0 0 0 1px var(--accent-dim); }
+/* Only things you can press. A label has no edge to strengthen - see the chip
+   rule for why the two must not look alike. */
+button.chip, .iconbtn, .suggest-chip {
+  border-color: var(--line-strong);
+}
+input[type=text], input[type=search], select, input[type=file] {
+  border-color: var(--line-strong);
+}
+
+/* A row that can be selected has to look like one. The history and artifact
+   lists were plain text with a pointer cursor and nothing else. */
+ul.plain > li[style*="cursor"] {
+  border-radius: var(--r-sm);
+  padding-left: 10px; padding-right: 10px;
+  margin: 0 -10px;
+  transition: background .12s ease-out;
+}
+ul.plain > li[style*="cursor"]:hover { background: var(--bg-2); }
+
+/* ==================================================== adding a model (L1) */
+
+.dropzone {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; min-height: 130px; padding: 22px;
+  border: 2px dashed var(--line-strong); border-radius: var(--r-lg);
+  background: var(--bg-2); cursor: pointer;
+  text-align: center;
+  transition: border-color .15s ease-out, background .15s ease-out;
+}
+.dropzone:hover, .dropzone:focus-visible {
+  border-color: var(--accent); background: var(--bg-3);
+}
+.dropzone:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* While a file is over the zone. Without a visible change the operator cannot
+   tell whether the page has accepted the drag, and lets go somewhere else. */
+.dropzone.over {
+  border-color: var(--accent); background: var(--accent-soft);
+  border-style: solid;
+}
+.dropzone b { font-size: 13.5px; color: var(--ink); }
+
+/* Numbered steps that read as steps. An <ol> of plain <li> at 14px is a wall;
+   the number needs to be the thing the eye lands on. */
+ol.steps-list {
+  margin: 0; padding: 0; list-style: none; counter-reset: step;
+}
+ol.steps-list > li {
+  counter-increment: step;
+  position: relative;
+  padding: 0 0 14px 34px;
+  font-size: 13px; line-height: 1.55; color: var(--ink-2);
+}
+ol.steps-list > li::before {
+  content: counter(step);
+  position: absolute; left: 0; top: 0;
+  width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center;
+  font: 700 11px/1 var(--mono);
+  background: var(--accent-soft); color: var(--accent-text);
+  border: 1px solid var(--accent-line);
+}
+ol.steps-list > li:last-child { padding-bottom: 0; }
+ol.steps-list b { color: var(--ink); }
+ol.steps-list .mono { color: var(--ink); }
+
+#add-model-card .row.split { gap: 26px; }
+#model-found .out-item { padding: 10px 12px; margin-bottom: 8px; }
+
+/* ====================================================== room inside a card */
+
+/* The cards had space AROUND them and none INSIDE them: 20px of padding, 8px
+   between key/value rows, 10px table cells, and a scroll gutter the last
+   column sat against. Every panel therefore read as one dense block whatever
+   was in it. These are the inside measurements. */
+
+.card { padding: 22px 24px 24px; }
+.card .row { margin-bottom: 0; }
+
+/* Key/value rows get a real line of their own, with a hairline between them so
+   the eye can track a long label across to its value. */
+/* column-gap 0, and the space put INSIDE the label cell instead.
+   With a gap, each cell draws its own bottom border and the rule breaks in the
+   middle of every row - which reads as a rendering fault rather than as a
+   separator. The padding gives the same visual gap with a continuous line. */
+.kv { gap: 0; }
+.kv dt, .kv dd {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.kv dt { padding-right: 24px; }
+.kv dt:nth-last-of-type(1), .kv dd:nth-last-of-type(1) { border-bottom: 0; }
+.kv dd { overflow-wrap: anywhere; }
+
+/* Table rows need height, and the last column needs to clear the scrollbar.
+   `.scroll` already reserves a gutter; the cell padding has to respect it or
+   the right-hand column is printed under the thumb. */
+table.grid td { padding: 12px 14px; }
+table.grid th { padding: 11px 14px; }
+table.grid th:last-child, table.grid td:last-child { padding-right: 20px; }
+table.grid.console td { padding: 9px 14px; }
+
+/* A section heading inside a card sits closer to what it introduces than to
+   what came before it - otherwise it reads as the end of the block above. */
+.card h3.sec:first-child { margin-top: 4px; }
+.card > .scroll { margin-top: 2px; }
+
+/* The two-column split inside a card is content, not layout: it needs the same
+   gap the page grid uses, not the tighter one meant for stat tiles. */
+.card .row.split, .card .row.split-r, .card .row.c2, .card .row.c3 { gap: 26px; }
+
+/* The line under a chart or a bar belongs to the chart. */
+.card p.tiny.muted { line-height: 1.5; }
+
+/* A SCROLLABLE LIST MUST NOT LOOK LIKE A COMPLETE ONE.
+   The registry showed 7 of 14 models with a clean edge at the cut - which
+   reads as "these are the models", not "scroll for the rest". Every scroll box
+   gets a soft fade at its bottom edge so a truncated list is visibly
+   truncated, and the registry gets enough height that the usual 14 rows do not
+   need scrolling at all. */
+.scroll {
+  position: relative;
+  /* The fade is painted by the container, not by an extra element, so it
+     cannot be scrolled away with the content. `local` keeps the top shadow
+     hidden until the list is actually scrolled. */
+  background:
+    linear-gradient(var(--bg-1) 30%, transparent) top / 100% 24px no-repeat local,
+    linear-gradient(transparent, var(--bg-1) 70%) bottom / 100% 24px no-repeat local,
+    radial-gradient(farthest-side at 50% 0, rgba(0,0,0,.16), transparent)
+      top / 100% 10px no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, rgba(0,0,0,.16), transparent)
+      bottom / 100% 10px no-repeat scroll;
+}
+/* `.scroll.short` is the opt-in for a list that must stay compact - the
+   document list on Home is beside a small card, and letting it grow to 560px
+   left a column of empty space next to it. Same specificity as this rule and
+   written earlier in the file, so it lost; excluding it here is what makes
+   the opt-in mean something again. */
+#rt-registry, .card > .scroll:not(.short) { max-height: 560px; }
+
+/* ============================================================ capabilities */
+
+.cap-list {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 4px 28px;
+}
+.cap-row {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 11px 0; border-bottom: 1px solid var(--line-soft);
+}
+.cap-mark {
+  flex: none; width: 20px; height: 20px; margin-top: 1px;
+  display: grid; place-items: center; border-radius: 50%;
+  font: 700 11px/1 var(--mono);
+  border: 1px solid currentColor;
+}
+.cap-mark.good { color: var(--green); }
+.cap-mark.warn { color: var(--amber); }
+.cap-text { min-width: 0; }
+.cap-name { font-size: 13px; color: var(--ink); }
+/* The line that turns a red cross into something a person can act on. */
+.cap-detail {
+  font-size: 11.5px; line-height: 1.5; color: var(--muted); margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+.cap-row.off .cap-name { color: var(--ink-2); }
+.cap-row.off .cap-detail { color: var(--amber); }
+
+#probe-out { max-height: 200px; margin-top: 12px; }
+
+/* ------------------------------------------------ the file picker, aligned */
+
+/* Three controls on one row have to agree about height, radius and where
+   their middle is. The file input was the odd one out: a 6px radius beside
+   two 10px ones, and a 28px inner button floating inside a 44px box, which is
+   what made the row look misaligned even though every box was 44px tall. */
+input[type=file] {
+  border-radius: var(--r);
+  padding: 0 6px 0 0;
+  gap: 0;
+}
+input[type=file]::file-selector-button {
+  height: 34px;
+  margin-right: 12px;
+  border-radius: var(--r-sm) 0 0 var(--r-sm);
+  border-width: 0 1px 0 0;
+  font-size: 12.5px;
+}
+
+/* A card whose heading is not inside a .card-head still needs the space a
+   heading earns. */
+.card > .card-title { display: block; margin-bottom: 16px; }
+
+/* ==================================================== reading a document */
+
+/* Minimal, and honest about what it knows. A stage list plus a page count,
+   because those are things the server actually reports; no percentage
+   invented from elapsed time, which stalls at 90% on the page that is
+   costing the time and teaches people to distrust the bar. */
+
+.ingest {
+  margin-top: 16px; padding: 16px 18px;
+  border: 1px solid var(--accent-line); border-radius: var(--r);
+  background: var(--accent-soft);
+}
+.ingest-head { display: flex; align-items: center; gap: 10px; }
+.ingest-head .spacer { flex: 1; }
+.ingest-name { font-size: 12.5px; color: var(--ink); overflow-wrap: anywhere; }
+
+/* One ring, one revolution a second. Slow enough to read as "working" rather
+   than "frantic", and it is the only thing on the page that moves. */
+.spinner {
+  flex: none; width: 15px; height: 15px; border-radius: 50%;
+  border: 2px solid var(--accent-line);
+  border-top-color: var(--accent);
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.ingest-steps {
+  display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 14px 0 10px;
+}
+.ingest-step {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--muted);
+}
+.ingest-dot {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  display: grid; place-items: center; font: 700 9px/1 var(--mono);
+}
+.ingest-step.done { color: var(--ink-2); }
+.ingest-step.done .ingest-dot { border-color: var(--green); color: var(--green); }
+/* The step being worked on is the one a waiting person is looking for. */
+.ingest-step.now { color: var(--ink); font-weight: 600; }
+.ingest-step.now .ingest-dot {
+  border-color: var(--accent); background: var(--accent);
+}
+.ingest-step.bad { color: var(--red); }
+.ingest-step.bad .ingest-dot { border-color: var(--red); color: var(--red); }
+
+.ingest-detail { font-size: 12px; line-height: 1.5; color: var(--ink-2); }
+.ingest-detail.bad { color: var(--red); }
+
+.ingest-bar {
+  margin-top: 12px; height: 4px; border-radius: 2px;
+  background: var(--bg-3); overflow: hidden;
+}
+.ingest-bar span {
+  display: block; height: 100%; background: var(--accent);
+  transition: width .4s ease-out;
+}
+
+/* Respect a reader who has asked the operating system for less movement. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation: none; border-top-color: var(--accent-line); }
+  .ingest-bar span { transition: none; }
+}
+
+/* A repeated notice is one notice with a count, not a column of copies. */
+.toast { display: flex; align-items: flex-start; gap: 10px; }
+/* How many times this notice has repeated - a count, not a dismiss button.
+   Tinted rather than edged, for the same reason the badges are. */
+.toast-count {
+  margin-left: auto; flex: none;
+  font: 700 10.5px/1 var(--mono); color: var(--muted);
+  background: var(--bg-3); border-radius: var(--r-pill);
+  padding: 3px 8px;
+}
+
+/* ============================================ which model did what (L2 in L5)
+
+   One row per routing decision, read as a sentence: the stage, the class the
+   classifier detected, an arrow, and the model that class led to. The arrow is
+   the point of the card - the TASK decides the model, not the other way round -
+   so it is drawn rather than implied by column order. */
+.route-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.route-row:last-child { border-bottom: 0; }
+.route-stage {
+  font: 600 11px/1 var(--mono); color: var(--ink);
+  min-width: 52px;
+}
+.route-class {
+  font: 11px/1 var(--mono); color: var(--ink-2);
+}
+.route-arrow { font: 11px/1 var(--mono); color: var(--muted); }
+/* The also-rans, under the row that names the winner. Indented to the model
+   column so a reader scanning winners can ignore it entirely. */
+.route-considered {
+  font: 10.5px/1.5 var(--mono); color: var(--muted);
+  padding: 0 0 8px 52px;
+  border-bottom: 1px solid var(--line-soft);
+}

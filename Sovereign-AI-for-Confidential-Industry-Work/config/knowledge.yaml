@@ -1,0 +1,87 @@
+# L3 knowledge plane configuration (§07).
+#
+# Everything here is read at ingest/search time, so a tuning change is a file
+# edit plus `POST /api/kb/reload` - no restart, same as the router's prototypes.
+
+ingest:
+  # A PDF page whose own text layer yields at least this many characters is
+  # taken as a NATIVE page and never sent down the OCR/VLM path. Below it the
+  # page is treated as an image.
+  #
+  # 120 not 0: a scanned page often carries a thin text layer - a stamped page
+  # number, a footer added by the scanner's software. Accepting that as "the
+  # page has text" indexes a page as the string "Page 3 of 7" and then answers
+  # questions from it. An almost-empty text layer is evidence of a scan, not of
+  # text.
+  min_native_chars: 120
+
+  # Extensions the fork knows how to open at all. Anything else is recorded as a
+  # skipped file with a reason rather than silently ignored.
+  pdf_extensions: [.pdf]
+  image_extensions: [.png, .jpg, .jpeg, .tif, .tiff, .bmp]
+
+  # Render DPI for the image path. 200 is the floor at which small instrument
+  # tags on a P&ID survive rasterisation.
+  render_dpi: 200
+
+  # Documents carry their own marking ("CLASSIFICATION: CONFIDENTIAL" in the MRPL
+  # header block) and that marking wins. This is the label for a document where
+  # no marking was found AND at least one page could not be read.
+  #
+  # CONFIDENTIAL, not the corpus default: the marking usually sits in the header
+  # of page 1, so a document with an unreadable page may well have had its
+  # marking on the page we failed to read. Defaulting that to INTERNAL indexes an
+  # unread RESTRICTED scan as something an operator may retrieve. Over-classify
+  # what you could not read; the alternative is a silent clearance bypass.
+  unclassified_label: CONFIDENTIAL
+
+chunk:
+  # Characters, not tokens: the tokeniser is a property of whichever model is
+  # resident, and the index must not change shape when the router swaps models.
+  target_chars: 1000
+  overlap_chars: 150
+  min_chars: 80
+
+  # A chunk NEVER spans a page boundary, whatever the target size says. A chunk
+  # covering pages 3-4 cannot be cited honestly - "[doc p.3]" would be a claim
+  # about text that is partly on page 4, and a reader who turns to page 3 to
+  # check finds half of it. Page-exact citation is the whole point of §07.
+  never_cross_pages: true
+
+retrieval:
+  top_k: 6
+  # Each arm is asked for more than top_k so fusion has something to fuse; a
+  # candidate ranked 8th by BM25 and 9th by vectors should still be able to win.
+  candidates_per_arm: 25
+
+  # Reciprocal Rank Fusion, score = sum over arms of 1/(k + rank).
+  #
+  # NOT a weighted sum of the two scores. BM25 scores are unbounded and depend on
+  # the corpus; cosine similarity is 0..1. Adding them makes the weight on the
+  # BM25 term meaningless and, on a corpus like MRPL's where a query shares rare
+  # tokens with one document, the lexical arm silently wins every time. Same
+  # lesson the router learned about raw seconds vs normalised terms (§04) - a
+  # fusion that quietly becomes one arm is worse than one arm honestly declared.
+  rrf_k: 60
+
+  # Below this cosine similarity a dense hit is noise, not a neighbour. It still
+  # counts toward the arm's ranking but is dropped from the fused set so a query
+  # with no real match returns nothing rather than the least-bad chunk.
+  min_dense_similarity: 0.15
+
+  # Chunks whose page could not be read are never returned - there is nothing to
+  # return - but every search that touched a document with unreadable pages says
+  # so in `coverage`. An answer drawn from a corpus with a hole in it must not
+  # look like an answer drawn from a whole one.
+  warn_on_unreadable: true
+
+citations:
+  # Rendered form. ASCII only: the section sign mojibakes on a Windows console
+  # and this string ends up in CLI output, model context and the run sheet.
+  #   [SOP_01 p.2]         page-level
+  #   [SOP_01 p.2 s.4.1]   page + section heading
+  required_for: [kb_qa, doc_summary]
+  # An answer citing a document that was not in its context is citing from the
+  # model's memory, not from the corpus. That is the failure mode citations
+  # exist to catch, so it is a distinct verdict from an outright invention.
+  max_context_chunks: 8

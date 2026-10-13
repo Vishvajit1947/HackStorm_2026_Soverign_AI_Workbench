@@ -1,0 +1,71 @@
+# L2 router configuration (§04).
+#
+# These weights were tuned by hand on the rehearsal set. They are a hackathon
+# default, not a learned optimum - say so if asked, it is a better answer than
+# pretending otherwise.
+
+scoring:
+  # score(m) = w_quality    * quality[m][class]        0..1
+  #          + w_confidence * confidence_fit(m, p)     0..1
+  #          - w_latency    * generation_time_norm     0..1
+  #          - w_swap       * swap_cost_norm           0..1
+  #          - w_vram       * vram_pressure            0..1
+  #
+  # EVERY TERM IS NORMALISED 0..1, so these weights are directly comparable and
+  # a weight of 1.00 really is twice a weight of 0.50. See scoring.py for why
+  # that is load-bearing rather than cosmetic: raw seconds make the latency term
+  # swamp quality by ~10x and the router quietly becomes "pick the fastest".
+  w_quality: 1.00
+  w_confidence: 0.35
+  w_latency: 0.15
+
+  # RE-TUNED from the doc's 0.30. Normalisation changed what this number means:
+  # at 0.30 a reload could override a 0.30 quality gap, which is not "a few
+  # points" - it is enough to keep a materially worse model resident. At 0.20 the
+  # swap term flips a decision only when the candidates are within ~0.2 quality
+  # of each other, which is the behaviour §04 actually describes.
+  #   worked example, MID, qwen3-8b resident and coder-7b cold:
+  #     coder 0.88 quality, cold  -> 0.88 - 0.095 - 0.20 - 0.047 = 0.538  WINS
+  #     8b    0.68 quality, warm  -> 0.68 - 0.106 - 0.00 - 0.055 = 0.519
+  #   a 20-point quality gap beats a 4.2 s reload; a 5-point gap does not.
+  w_swap: 0.20
+  w_vram: 0.10
+
+  # DEVIATION FROM KVC-ARCH-001 §04, deliberate:
+  # the doc's formula has `- w_l * (load_ms + est_gen_ms)/1000` alongside
+  # `- w_s * swap_cost(m)`. load_ms appears in both, so a cold model is charged
+  # for its load twice and the router over-avoids cold models.
+  # Here the latency term is GENERATION ONLY and swap_cost carries the whole
+  # load+evict penalty. One cost, one term.
+  assumed_output_tokens: 512
+
+classifier:
+  # k-nearest-neighbour head over the labelled prototypes in prototypes.yaml.
+  # Improving the router means ADDING EXAMPLES, not retraining anything.
+  k: 5
+  # Below this the request is treated as unclassified: the cascade falls back to
+  # agentic_multi (the planner tier) rather than guessing a specialist.
+  min_confidence: 0.35
+  # Temperature on the similarity->probability softmax. Lower = more decisive.
+  temperature: 0.08
+
+verifier:
+  enabled: true
+  # A failed check escalates the SAME prompt one tier up. Once. Never a loop.
+  max_retries: 1
+  min_output_chars: 12
+  # Classes whose answers must carry an inline citation. An uncited claim in a
+  # plant context is worse than no answer (§07).
+  require_citations: [kb_qa, doc_summary]
+  # Classes whose output must parse as code.
+  require_parseable_code: [code_generation]
+
+# Hard constraints applied before anything is scored (stage 1). Listed here so an
+# auditor can read the elimination rules without reading constraints.py.
+constraints:
+  eliminate_unroutable: true        # unverified / mismatched weights
+  eliminate_no_vision_when_images: true
+  eliminate_no_tools_when_tools_needed: true
+  eliminate_context_too_short: true
+  eliminate_wont_fit_in_vram: true
+  eliminate_above_policy_tier: true

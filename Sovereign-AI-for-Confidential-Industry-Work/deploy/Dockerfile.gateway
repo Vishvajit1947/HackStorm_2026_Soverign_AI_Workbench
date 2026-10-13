@@ -1,0 +1,29 @@
+# Gateway image. Built once, exported as a tarball, carried to the venue on an SSD.
+# Assume no internet at the venue (§10) - `docker save kavach/gateway:0.1.0 -o ...`.
+
+FROM python:3.12-slim AS base
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+WORKDIR /app
+
+# Dependencies first so the layer caches across code edits.
+COPY pyproject.toml ./
+COPY services/ ./services/
+
+RUN pip install --no-cache-dir -e . \
+    && useradd --system --uid 10001 --create-home kavach \
+    && mkdir -p /var/kavach /models \
+    && chown -R kavach:kavach /var/kavach /app
+
+COPY config/ ./config/
+
+USER kavach
+
+EXPOSE 8080
+
+# No CMD curl/wget - this image has no network to reach anyway. Health is checked
+# over loopback by compose using stdlib urllib.
+CMD ["uvicorn", "kavach.api.app:app", "--host", "0.0.0.0", "--port", "8080"]
