@@ -1,0 +1,72 @@
+[project]
+name = "kavach"
+version = "0.1.0"
+description = "Kavach Sovereign Workbench - air-gapped multi-model agentic AI runtime"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+    "pyyaml>=6.0",
+    "httpx>=0.27",
+    "numpy>=1.26",
+    "sse-starlette>=2.1",
+    # Not optional: "calculations with steps shown" is a traced requirement
+    # (§12), and calc degrades to a restricted arithmetic evaluator without it.
+    # Leaving it to an extra risks the demo box not having it.
+    "sympy>=1.12",
+    # Required by the corpus upload endpoint: FastAPI refuses to build a route
+    # with a file parameter without it, so a missing wheel here is a gateway
+    # that will not start rather than a feature that quietly misbehaves.
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+# Everything below is staged offline onto the box; nothing is fetched at runtime.
+#
+# No qdrant-client. KVC-ARCH-001 names a vector database; on one air-gapped box
+# with a few thousand chunks, a numpy dot product over a memory-mapped matrix
+# answers in under a millisecond, and a second daemon would be another thing to
+# install offline, keep running, back up, and keep in agreement with the SQLite
+# rows that citations resolve against. Two sources of truth for "what is in the
+# corpus" is exactly how a citation stops resolving. See knowledge/index.py.
+knowledge = ["rank-bm25>=0.2.2", "pymupdf>=1.24"]
+deliverables = ["python-docx>=1.1", "openpyxl>=3.1", "python-pptx>=0.6.23"]
+# The knowledge extras are in `dev` too: the Phase 6 tests open real PDFs, and a
+# test suite that skips when a dependency is missing is a coverage gap wearing a
+# green tick.
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.5",
+    "rank-bm25>=0.2.2",
+    "pymupdf>=1.24",
+]
+
+[project.scripts]
+kavach = "kavach.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["services"]
+include = ["kavach*"]
+
+[tool.setuptools.package-data]
+# The UI ships INSIDE the wheel. A panel that has to be deployed
+# separately is a panel that is missing on the venue box.
+kavach = ["**/*.yaml", "**/*.sql", "ui/*.html", "ui/*.css", "ui/*.js"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["services", "tests", "scripts"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["kavach"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

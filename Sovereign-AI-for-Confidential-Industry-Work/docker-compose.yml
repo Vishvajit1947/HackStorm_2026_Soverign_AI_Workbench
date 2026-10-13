@@ -1,0 +1,110 @@
+# Kavach Sovereign Workbench.
+#
+# The sovereignty claim rests on `internal: true` below. It removes the gateway and
+# the default route from the bridge entirely - containers on kavach_core do not
+# *choose* to avoid the network, they have no route to it.
+#
+# Services are added as phases land. Phase 1 ships the network + the gateway.
+
+name: kavach
+
+networks:
+  # L0 - the enclosure every other layer sits inside.
+  kavach_core:
+    driver: bridge
+    internal: true              # <- no gateway, no route out, no DNS forwarder
+    ipam:
+      config:
+        - subnet: 172.31.240.0/24
+
+volumes:
+  kavach_var:
+  kavach_models:
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.gateway
+    image: kavach/gateway:0.1.0
+    networks: [kavach_core]
+    # The ONLY port published to the host. Bound to loopback so the workbench is
+    # not reachable from the plant LAN even by accident.
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      KAVACH_PROFILE: ${KAVACH_PROFILE:-MID}
+      KAVACH_BACKEND: ${KAVACH_BACKEND:-mock}
+      KAVACH_VAR_DIR: /var/kavach
+      KAVACH_MODEL_DIR: /models
+      KAVACH_ENFORCE_DIGESTS: ${KAVACH_ENFORCE_DIGESTS:-1}
+      KAVACH_HOST: 0.0.0.0
+      KAVACH_PORT: "8080"
+    volumes:
+      - kavach_var:/var/kavach
+      - ./models:/models:ro
+      - ./config:/app/config:ro
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/api/health',timeout=3).status==200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # Executed code gets no interface at all (§06). Not started by compose - the
+  # executor spawns one container per call and tears it down after.
+  sandbox-runner:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.sandbox
+    image: kavach/sandbox:0.1.0
+    profiles: [manual]          # `docker compose build sandbox-runner` only
+    network_mode: "none"        # <- no interface whatsoever
+    read_only: true
+    tmpfs:
+      - /work:size=256m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=./deploy/seccomp-strict.json
+    cap_drop: [ALL]
+    pids_limit: 128
+    mem_limit: 2g
+    cpus: 1.5
+
+# ---- running the real backend (KAVACH_BACKEND=llamacpp) ----
+#
+# There is deliberately no llamacpp service here. The VRAM warden spawns one
+# `llama-server` process per resident model and kills it on eviction - that is what
+# makes eviction actually free VRAM on a consumer card. A long-lived compose
+# service would hold its allocation for the life of the container and the warden
+# would be reduced to bookkeeping.
+#
+# So the gateway image needs the llama.cpp binary and the GPU:
+#
+#   1. Build deploy/Dockerfile.gateway on a CUDA base with llama.cpp compiled in.
+#   2. Give the gateway the device:
+#
+#        gateway:
+#          environment:
+#            KAVACH_BACKEND: llamacpp
+#          deploy:
+#            resources:
+#              reservations:
+#                devices:
+#                  - driver: nvidia
+#                    count: 1
+#                    capabilities: [gpu]
+#
+#   3. Stage the GGUFs into ./models and record their digests:
+#        python scripts/stage_model.py --write
+#
+# The servers bind 127.0.0.1 inside the container's own namespace, so they are not
+# reachable from anywhere - not even from the other containers on kavach_core.
+#
+# ---- added in later phases ----
+#  qdrant                            (Phase 6)  networks: [kavach_core]

@@ -1,0 +1,42 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Runtime state - never commit
+var/
+*.db
+*.db-wal
+*.db-shm
+audit.log
+
+# Model weights are staged onto the box out of band, never into git
+models/*.gguf
+models/*.bin
+models/*.safetensors
+models/_rejected/
+
+# Corpus + generated deliverables
+corpus/
+workspaces/
+
+node_modules/
+ui/dist/
+.env
+.DS_Store
+
+# pytest scratch dirs (--basetemp). These used to land in the repo root.
+pt_*/
+tmp/
+
+# llama.cpp runtime. ~45 MB of build output that is not this project's
+# source: stage it beside the weights and put it on PATH instead.
+*.dll
+*.exe
+
+# a stray backup of a secrets file is still a secrets file
+.env.bak
+kavach.env

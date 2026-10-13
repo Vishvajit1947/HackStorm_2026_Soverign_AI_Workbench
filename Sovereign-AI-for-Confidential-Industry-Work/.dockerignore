@@ -1,0 +1,17 @@
+# Build context hygiene. The Dockerfiles COPY only pyproject.toml, services/,
+# config/ and deploy/; everything below would otherwise be shipped to the daemon
+# on every build - and var/ holds the live SQLite audit chain, which must never
+# be baked into an image.
+.git
+.venv
+venv
+wheels
+tmp
+var
+models
+.env
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.mypy_cache
